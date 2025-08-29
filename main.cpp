@@ -1,15 +1,19 @@
 #include "./DataStructure/DynamicArray.hpp"
+#include "./DataStructure/LinkedList/SinglyLinkedList.hpp"
 #include "./DataStructure/StaticArray.hpp"
-#include <array>
 #include <iostream>
 #include <string>
 #include <vector>
 
 int main() {
-  DynamicArray d = {1, 2, 3};
-  d.push_back(4);
+  LinkedList::SinglyLinkedList<int> list;
+  list.pushFront(1);
+  list.pushFront(2);
+  list.pushFront(3);
 
-  for (const int i : d) {
+  LinkedList::SinglyLinkedList<int> list2 = list;
+
+  for (const auto &i : list2) {
     std::cout << i << std::endl;
   }
 

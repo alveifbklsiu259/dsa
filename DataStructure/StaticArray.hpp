@@ -27,7 +27,12 @@ public:
     }
   }
 
-  T get(int index) const {
+  T &at(int index) {
+    assertBounds(index);
+    return data[index];
+  }
+
+  const T &at(int index) const {
     assertBounds(index);
     return data[index];
   }

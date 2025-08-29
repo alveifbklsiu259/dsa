@@ -1,6 +1,6 @@
 #pragma once
+#include <iostream>
 #include <stdexcept>
-
 template <typename T> class DynamicArray {
 private:
   T *data;
@@ -19,7 +19,19 @@ private:
 
     T *newData = new T[newCapacity];
 
-    std::copy(data, data + length, newData);
+    if constexpr (std::is_move_constructible_v<T>) {
+      std::cout << "moved!" << std::endl;
+      std::copy(std::make_move_iterator(data),
+                std::make_move_iterator(data + length), newData);
+
+      // same as
+      // for (size_t i = 0; i < length; ++i)
+      //   newData[i] = std::move(data[i]);
+    } else {
+      std::cout << "copied!" << std::endl;
+      std::copy(data, data + length, newData);
+    };
+
     delete[] data;
     data = newData;
     capacity = newCapacity;
