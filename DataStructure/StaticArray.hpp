@@ -59,4 +59,18 @@ public:
 
   const T *begin() const { return data; }
   const T *end() const { return data + N; }
+
+  std::reverse_iterator<T *> rbegin() {
+    return std::reverse_iterator<T *>(end());
+  }
+  std::reverse_iterator<T *> rend() {
+    return std::reverse_iterator<T *>(begin());
+  }
+
+  const std::reverse_iterator<const T *> rbegin() const {
+    return std::reverse_iterator<const T *>(end());
+  }
+  const std::reverse_iterator<const T *> rend() const {
+    return std::reverse_iterator<const T *>(begin());
+  }
 };

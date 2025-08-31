@@ -1,70 +1,71 @@
 #pragma once
-
+#include "./DoublyLinkedListNode.hpp"
 #include "./Exception.hpp"
 #include "./Iterator.hpp"
 #include "./Node.hpp"
+#include <initializer_list>
 #include <iostream>
 #include <utility>
 #include <vector>
 
 namespace LinkedList {
-template <typename T> class SinglyLinkedList {
-
+template <typename T> class DoublyLinkedList {
 private:
   int size = 0;
-  Node<T> *head = nullptr;
+  DoublyLinkedListNode<T> *head = nullptr;
 
   void release() noexcept {
     while (head) {
-      Node<T> *temp = head;
+      DoublyLinkedListNode<T> *temp = head;
       head = head->next;
       delete temp;
-    };
+    }
   }
 
-  void deepCopy(const SinglyLinkedList<T> &other) {
+  void deepCopy(const DoublyLinkedList<T> &other) {
     if (!other.head) {
       head = nullptr;
       return;
     }
 
     size = other.size;
-    head = new Node<T>(other.head->value);
-    Node<T> *current = head;
-    Node<T> *otherCurrent = other.head->next;
+    head = new DoublyLinkedListNode<T>(other.head->value);
+    DoublyLinkedListNode<T> *current = head;
+    DoublyLinkedListNode<T> *otherCurrent = other.head->next;
 
     while (otherCurrent) {
-      current->next = new Node<T>(otherCurrent->value);
+      current->next = new DoublyLinkedListNode<T>(otherCurrent->value);
       current = current->next;
       otherCurrent = otherCurrent->next;
     }
   }
 
-  void move(SinglyLinkedList<T> &other) noexcept {
+  void move(DoublyLinkedList<T> &other) noexcept {
     size = other.size;
     head = std::exchange(other.head, nullptr);
   }
 
 public:
-  SinglyLinkedList() = default;
-  SinglyLinkedList(std::initializer_list<T> init) {
-    for (auto it = std::rbegin(init); it != std::rend(init); it++)
-      pushFront(*it);
+  DoublyLinkedList() = default;
+  DoublyLinkedList(std::initializer_list<T> init) {
+    for (const T &value : init)
+      pushFront(value);
   }
 
-  SinglyLinkedList(const SinglyLinkedList<T> &other) { deepCopy(other); }
+  DoublyLinkedList(const DoublyLinkedList<T> &other) { deepCopy(other); }
 
-  SinglyLinkedList<T> &operator=(const SinglyLinkedList<T> &other) {
+  DoublyLinkedList<T> &operator=(const DoublyLinkedList<T> &other) {
     if (this == &other)
       return *this;
+
     release();
     deepCopy(other);
     return *this;
   }
 
-  SinglyLinkedList(SinglyLinkedList<T> &&other) noexcept { move(other); }
+  DoublyLinkedList(DoublyLinkedList<T> &&other) noexcept { move(other); }
 
-  SinglyLinkedList<T> &operator=(SinglyLinkedList<T> &&other) noexcept {
+  DoublyLinkedList<T> &operator=(DoublyLinkedList<T> &&other) noexcept {
     if (this == &other)
       return *this;
     release();
@@ -72,12 +73,16 @@ public:
     return *this;
   }
 
-  ~SinglyLinkedList() { release(); }
+  ~DoublyLinkedList() { release(); }
 
   int getSize() { return size; }
 
   void pushFront(const T &value) {
-    head = new Node<T>(value, head);
+    DoublyLinkedListNode<T> *newNode =
+        new DoublyLinkedListNode<T>(value, head, nullptr);
+    if (head)
+      head->prev = newNode;
+    head = newNode;
     size += 1;
   }
 
@@ -86,7 +91,7 @@ public:
       throw EmptyListException();
 
     size -= 1;
-    Node<T> *temp = head;
+    DoublyLinkedListNode<T> *temp = head;
     head = head->next;
     delete temp;
   }
@@ -110,11 +115,11 @@ public:
   void fromVector(const std::vector<T> &vec) {
     for (auto it = vec.rbegin(); it != vec.rend(); it++) {
       pushFront(*it);
-    };
+    }
   }
 
   void print() {
-    Node<T> *current = head;
+    DoublyLinkedListNode<T> *current = head;
     while (current) {
       std::cout << current->value << " --> ";
       current = current->next;
@@ -123,10 +128,16 @@ public:
     std::cout << "nullptr" << std::endl;
   }
 
-  Iterator<T> begin() { return Iterator<T>(head); }
-  Iterator<T> begin() const { return Iterator<T>(head); }
+  Iterator<T> begin() { return Iterator<T>((Node<T> *)head); }
+  Iterator<T> begin() const { return Iterator<T>((Node<T> *)head); }
 
   Iterator<T> end() { return Iterator<T>(nullptr); }
   Iterator<T> end() const { return Iterator<T>(nullptr); }
 };
 } // namespace LinkedList
+
+// i think maybe a base LinkedList class then extends that by singly and doubly,
+// because they're pretty much the same, the only difference is the Node they
+// use and additional method for doubly
+
+// I think we should also have a base node and extend (can we do that??)
