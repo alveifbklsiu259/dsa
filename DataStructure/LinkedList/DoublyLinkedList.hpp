@@ -1,143 +1,102 @@
 #pragma once
-#include "./DoublyLinkedListNode.hpp"
 #include "./Exception.hpp"
 #include "./Iterator.hpp"
+#include "./LinkedListBase.hpp"
 #include "./Node.hpp"
-#include <initializer_list>
-#include <iostream>
-#include <utility>
-#include <vector>
 
 namespace LinkedList {
-template <typename T> class DoublyLinkedList {
+template <typename T>
+class DoublyLinkedList : public LinkedListBase<T, DoublyLinkNode<T>> {
 private:
-  int size = 0;
-  DoublyLinkedListNode<T> *head = nullptr;
-
-  void release() noexcept {
-    while (head) {
-      DoublyLinkedListNode<T> *temp = head;
-      head = head->next;
-      delete temp;
-    }
-  }
-
-  void deepCopy(const DoublyLinkedList<T> &other) {
-    if (!other.head) {
-      head = nullptr;
-      return;
-    }
-
-    size = other.size;
-    head = new DoublyLinkedListNode<T>(other.head->value);
-    DoublyLinkedListNode<T> *current = head;
-    DoublyLinkedListNode<T> *otherCurrent = other.head->next;
-
-    while (otherCurrent) {
-      current->next = new DoublyLinkedListNode<T>(otherCurrent->value);
-      current = current->next;
-      otherCurrent = otherCurrent->next;
-    }
-  }
-
-  void move(DoublyLinkedList<T> &other) noexcept {
-    size = other.size;
-    head = std::exchange(other.head, nullptr);
-  }
+  DoublyLinkNode<T> *tail = nullptr;
 
 public:
-  DoublyLinkedList() = default;
-  DoublyLinkedList(std::initializer_list<T> init) {
-    for (const T &value : init)
-      pushFront(value);
+  void pushFront(const T &value) override {
+    DoublyLinkNode<T> *newNode = new DoublyLinkNode<T>(value, this->head);
+    if (this->head) {
+      this->head->prev = newNode;
+    }
+
+    if (!tail)
+      tail = newNode;
+
+    this->head = newNode;
+    this->size++;
   }
 
-  DoublyLinkedList(const DoublyLinkedList<T> &other) { deepCopy(other); }
+  void pushBack(const T &value) {
+    DoublyLinkNode<T> *newNode = new DoublyLinkNode<T>(value, nullptr, tail);
+    if (tail) {
+      tail->next = newNode;
+    } else {
+      this->head = newNode;
+    }
 
-  DoublyLinkedList<T> &operator=(const DoublyLinkedList<T> &other) {
-    if (this == &other)
-      return *this;
-
-    release();
-    deepCopy(other);
-    return *this;
+    tail = newNode;
+    this->size++;
   }
 
-  DoublyLinkedList(DoublyLinkedList<T> &&other) noexcept { move(other); }
-
-  DoublyLinkedList<T> &operator=(DoublyLinkedList<T> &&other) noexcept {
-    if (this == &other)
-      return *this;
-    release();
-    move(other);
-    return *this;
-  }
-
-  ~DoublyLinkedList() { release(); }
-
-  int getSize() { return size; }
-
-  void pushFront(const T &value) {
-    DoublyLinkedListNode<T> *newNode =
-        new DoublyLinkedListNode<T>(value, head, nullptr);
-    if (head)
-      head->prev = newNode;
-    head = newNode;
-    size += 1;
-  }
-
-  void popFront() {
-    if (!head)
+  void popBack() {
+    if (!tail)
       throw EmptyListException();
 
-    size -= 1;
-    DoublyLinkedListNode<T> *temp = head;
-    head = head->next;
+    DoublyLinkNode<T> *temp = tail;
+    tail = tail->prev;
+    if (tail) {
+      tail->next = nullptr;
+    } else {
+      this->head = nullptr;
+    }
+
     delete temp;
+    this->size--;
   }
 
-  T &front() {
-    if (!head)
+  T &back() {
+    if (!tail)
       throw EmptyListException();
-
-    return head->value;
+    return tail->value;
   }
 
-  const T &front() const {
-    if (!head)
+  const T &back() const {
+    if (!tail)
       throw EmptyListException();
-
-    return head->value;
+    return tail->value;
   }
 
-  bool isEmpty() { return head == nullptr; }
-
-  void fromVector(const std::vector<T> &vec) {
-    for (auto it = vec.rbegin(); it != vec.rend(); it++) {
-      pushFront(*it);
-    }
-  }
-
-  void print() {
-    DoublyLinkedListNode<T> *current = head;
+  void printReverse() const {
+    DoublyLinkNode<T> *current = tail;
     while (current) {
-      std::cout << current->value << " --> ";
-      current = current->next;
+      std::cout << current->value << " <-- ";
+      current = current->prev;
     }
-
     std::cout << "nullptr" << std::endl;
   }
 
-  Iterator<T> begin() { return Iterator<T>((Node<T> *)head); }
-  Iterator<T> begin() const { return Iterator<T>((Node<T> *)head); }
+  void reverse() override {
+    DoublyLinkNode<T> *current = this->head;
+    tail = this->head;
 
-  Iterator<T> end() { return Iterator<T>(nullptr); }
-  Iterator<T> end() const { return Iterator<T>(nullptr); }
+    while (current) {
+      std::swap(current->prev, current->next);
+      if (!current->prev)
+        this->head = current;
+      current = current->prev;
+    }
+  }
+
+  ReverseIterator<DoublyLinkNode<T>> rbegin() {
+    return ReverseIterator<DoublyLinkNode<T>>(tail);
+  }
+  ReverseIterator<DoublyLinkNode<T>> rbegin() const {
+    return ReverseIterator<DoublyLinkNode<T>>(tail);
+  }
+
+  ReverseIterator<DoublyLinkNode<T>> rend() {
+    return ReverseIterator<DoublyLinkNode<T>>(nullptr);
+  }
+  ReverseIterator<DoublyLinkNode<T>> rend() const {
+    return ReverseIterator<DoublyLinkNode<T>>(nullptr);
+  }
 };
 } // namespace LinkedList
-
-// i think maybe a base LinkedList class then extends that by singly and doubly,
-// because they're pretty much the same, the only difference is the Node they
-// use and additional method for doubly
-
-// I think we should also have a base node and extend (can we do that??)

@@ -3,28 +3,93 @@
 #include "./Node.hpp"
 
 namespace LinkedList {
-template <typename T> class Iterator {
-private:
-  Node<T> *current;
+template <typename NodeType> class ForwardIterator {
+
+protected:
+  NodeType *current = nullptr;
+  using ValueType = decltype(std::declval<NodeType>().value);
 
 public:
-  explicit Iterator(Node<T> *node) : current(node) {}
+  explicit ForwardIterator(NodeType *node) : current(node) {}
 
-  Iterator<T> &operator++() {
+  ForwardIterator<NodeType> &operator++() {
     current = current->next;
     return *this;
   }
 
-  Iterator operator++(int) {
-    current = *this;
+  ForwardIterator operator++(int) {
+    ForwardIterator<NodeType> snapshot = *this;
     ++(*this);
-    return current;
+    return snapshot;
   }
 
-  T &operator*() const { return current->value; }
+  ValueType &operator*() const { return current->value; }
 
-  bool operator!=(const Iterator<T> &other) const {
+  bool operator!=(const ForwardIterator<NodeType> &other) const {
     return current != other.current;
   }
+
+  bool operator==(const ForwardIterator<NodeType> &other) const {
+    return current == other.current;
+  }
 };
+
+template <typename NodeType>
+class BidirectionalIterator : public ForwardIterator<NodeType> {
+public:
+  using ForwardIterator<NodeType>::ForwardIterator;
+
+  BidirectionalIterator<NodeType> &operator--() {
+    this->current = this->current->prev;
+    return *this;
+  }
+
+  BidirectionalIterator<NodeType> operator--(int) {
+    BidirectionalIterator<NodeType> snapshot = *this;
+    --(*this);
+    return snapshot;
+  }
+};
+
+template <typename NodeType> class ReverseIterator {
+private:
+  NodeType *current = nullptr;
+  using ValueType = decltype(std::declval<NodeType>().value);
+
+public:
+  explicit ReverseIterator(NodeType *node) : current(node) {}
+
+  ReverseIterator<NodeType> &operator++() {
+    current = current->prev;
+    return *this;
+  }
+
+  ReverseIterator<NodeType> operator++(int) {
+    ReverseIterator<NodeType> snapshot = *this;
+    ++(*this);
+    return snapshot;
+  }
+
+  ReverseIterator<NodeType> &operator--() {
+    current = current->next;
+    return *this;
+  }
+
+  ReverseIterator<NodeType> operator--(int) {
+    ReverseIterator<NodeType> snapshot = *this;
+    --(*this);
+    return snapshot;
+  }
+
+  bool operator==(const ReverseIterator<NodeType> &other) const {
+    return current == other.current;
+  }
+
+  bool operator!=(const ReverseIterator<NodeType> &other) const {
+    return current != other.current;
+  }
+
+  ValueType &operator*() const { return current->value; }
+};
+
 } // namespace LinkedList
