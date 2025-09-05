@@ -6,5 +6,5 @@
 
 namespace LinkedList {
 template <typename T>
-class SinglyLinkedList : public LinkedListBase<T, SinglyLinkNode<T>> {};
+class SinglyLinkedList : public LinkedListBase<SinglyLinkNode<T>> {};
 } // namespace LinkedList

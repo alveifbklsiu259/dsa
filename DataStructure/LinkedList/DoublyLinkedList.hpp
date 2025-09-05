@@ -6,7 +6,7 @@
 
 namespace LinkedList {
 template <typename T>
-class DoublyLinkedList : public LinkedListBase<T, DoublyLinkNode<T>> {
+class DoublyLinkedList : public LinkedListBase<DoublyLinkNode<T>> {
 private:
   DoublyLinkNode<T> *tail = nullptr;
 

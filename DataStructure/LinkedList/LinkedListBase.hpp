@@ -11,8 +11,9 @@
 
 namespace LinkedList {
 
-template <typename T, typename NodeType> class LinkedListBase {
+template <typename NodeType> class LinkedListBase {
 protected:
+  using ValueType = decltype(std::declval<NodeType>().value);
   int size = 0;
   NodeType *head = nullptr;
 
@@ -49,7 +50,7 @@ protected:
 
 public:
   LinkedListBase() = default;
-  LinkedListBase(std::initializer_list<T> init) {
+  LinkedListBase(std::initializer_list<ValueType> init) {
     for (auto it = std::rbegin(init); it != std::rend(init); ++it)
       pushFront(*it);
   }
@@ -77,7 +78,7 @@ public:
   int getSize() const { return size; }
   bool isEmpty() const { return head == nullptr; }
 
-  virtual void pushFront(const T &value) {
+  virtual void pushFront(const ValueType &value) {
     head = new NodeType(value, head);
     size++;
   }
@@ -91,19 +92,19 @@ public:
     size--;
   }
 
-  T &front() {
+  ValueType &front() {
     if (!head)
       throw EmptyListException();
     return head->value;
   }
 
-  const T &front() const {
+  const ValueType &front() const {
     if (!head)
       throw EmptyListException();
     return head->value;
   }
 
-  void fromVector(const std::vector<T> &vec) {
+  void fromVector(const std::vector<ValueType> &vec) {
     for (auto it = vec.rbegin(); it != vec.rend(); ++it)
       pushFront(*it);
   }
