@@ -1,6 +1,9 @@
 #pragma once
 #include <iostream>
 #include <stdexcept>
+
+namespace Array {
+
 template <typename T> class DynamicArray {
 private:
   T *data;
@@ -20,7 +23,7 @@ private:
     T *newData = new T[newCapacity];
 
     if constexpr (std::is_move_constructible_v<T>) {
-      std::cout << "moved!" << std::endl;
+      std::cout << "resize by moving!" << std::endl;
       std::copy(std::make_move_iterator(data),
                 std::make_move_iterator(data + length), newData);
 
@@ -28,7 +31,7 @@ private:
       // for (size_t i = 0; i < length; ++i)
       //   newData[i] = std::move(data[i]);
     } else {
-      std::cout << "copied!" << std::endl;
+      std::cout << "resize by copying!" << std::endl;
       std::copy(data, data + length, newData);
     };
 
@@ -38,6 +41,8 @@ private:
   }
 
 public:
+  DynamicArray() : capacity(1), length(0) { data = new T[1]; }
+
   DynamicArray(int size) : capacity(size), length(0) {
     if (size <= 0)
       throw std::invalid_argument("Size must be positive");
@@ -79,3 +84,4 @@ public:
   const T *begin() const { return data; }
   const T *end() const { return data + length; }
 };
+} // namespace Array

@@ -1,7 +1,10 @@
 #pragma once
+#include <cstddef>
 #include <stdexcept>
 
-template <typename T, std::size_t N> class StaticArray {
+namespace Array {
+
+template <typename T, size_t N> class StaticArray {
 private:
   T data[N];
 
@@ -74,3 +77,5 @@ public:
     return std::reverse_iterator<const T *>(begin());
   }
 };
+
+} // namespace Array
