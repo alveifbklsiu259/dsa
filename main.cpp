@@ -2,35 +2,32 @@
 #include "./DataStructure/Array/StaticArray.hpp"
 #include "./DataStructure/LinkedList/DoublyLinkedList.hpp"
 #include "./DataStructure/LinkedList/SinglyLinkedList.hpp"
+#include "./DataStructure/Queue/Queue.hpp"
 #include "./DataStructure/Stack/Stack.hpp"
 #include <iostream>
 #include <unordered_set>
 
+#include <vector>
+
 int main() {
-  Stack::Stack<std::string, 5> s;
+  Queue::Queue<int, 5> q;
+  q.enqueue(1);
+  q.enqueue(2);
+  q.enqueue(3);
+  q.enqueue(4);
+  q.enqueue(5);
+  Queue::Queue<int, 8> q2 = std::move(q);
+  q2.enqueue(6);
+  q2.enqueue(7);
+  q2.enqueue(8);
 
-  // std::cout << s.getCapacity() << std::endl;
-  // std::cout << s.getSize() << std::endl;
+  std::cout << q2.getSize() << std::endl;
+  while (!q2.isEmpty()) {
+    std::cout << q2.dequeue() << std::endl;
+  }
 
-  s.push("1");
-  s.push("2");
-  s.push("34");
-
-  // Stack::Stack<int, 8> s2 = s;
-  Stack::Stack<std::string, 8> s2;
-  s2 = std::move(s);
-  std::cout << s2.pop() << std::endl;
-
-  std::cout << s2.getCapacity() << std::endl;
-  std::cout << s2.getSize() << std::endl;
-
-  // ---
-
-  // std::cout << s.pop() << std::endl;
-  // std::cout << s.pop() << std::endl;
-  // std::cout << s.pop() << std::endl;
-  // std::cout << std::boolalpha << s.isEmpty() << std::endl;
-  // s.peek();
-
+  /*  */
   return 0;
-};
+}
+
+// what is CTAD?

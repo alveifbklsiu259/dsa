@@ -42,7 +42,7 @@ protected:
     }
   }
 
-  void move(LinkedListBase &other) noexcept {
+  void move(LinkedListBase &&other) noexcept {
     size = other.size;
     head = std::exchange(other.head, nullptr);
     other.size = 0;
@@ -64,11 +64,11 @@ public:
     return *this;
   }
 
-  LinkedListBase(LinkedListBase &&other) noexcept { move(other); }
+  LinkedListBase(LinkedListBase &&other) noexcept { move(std::move(other)); }
   LinkedListBase &operator=(LinkedListBase &&other) noexcept {
     if (this != &other) {
       release();
-      move(other);
+      move(std::move(other));
     }
     return *this;
   }

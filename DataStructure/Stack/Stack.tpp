@@ -16,16 +16,18 @@ template <size_t M> void Stack<T, N>::copy(const Stack<T, M> &other) {
 }
 
 STACK_TEMPLATE
-template <size_t M> void Stack<T, N>::move(const Stack<T, M> &other) noexcept {
+template <size_t M> void Stack<T, N>::move(Stack<T, M> &&other) noexcept {
   static_assert(M <= N, "Source stack too large for target stack");
   length = other.getSize();
   for (int i = 0; i < length; i++)
     data[i] = std::move(other.data[i]);
+  other.length = 0;
 }
 
 STACK_TEMPLATE void Stack<T, N>::init() {
   for (int i = 0; i < N; i++)
     data[i] = T{};
+  length = 0;
 }
 
 STACK_TEMPLATE
@@ -38,6 +40,7 @@ STACK_TEMPLATE Stack<T, N>::Stack(const Stack<T, N> &other) { copy(other); }
 STACK_TEMPLATE
 template <size_t M>
 Stack<T, N> &Stack<T, N>::operator=(const Stack<T, M> &other) {
+  init();
   copy(other);
   return *this;
 }
@@ -53,18 +56,18 @@ Stack<T, N> &Stack<T, N>::operator=(const Stack<T, N> &other) {
 
 STACK_TEMPLATE
 template <size_t M> Stack<T, N>::Stack(Stack<T, M> &&other) noexcept {
-  move(other);
+  move(std::move(other));
 }
 
 STACK_TEMPLATE
-Stack<T, N>::Stack(Stack<T, N> &&other) noexcept { move(other); }
+Stack<T, N>::Stack(Stack<T, N> &&other) noexcept { move(std::move(other)); }
 
 STACK_TEMPLATE
 template <size_t M>
 Stack<T, N> &Stack<T, N>::operator=(Stack<T, M> &&other) noexcept {
   if (!std::is_trivially_destructible<T>::value)
     init();
-  move(other);
+  move(std::move(other));
   return *this;
 }
 
@@ -74,7 +77,7 @@ Stack<T, N> &Stack<T, N>::operator=(Stack<T, N> &&other) noexcept {
     return *this;
   if (!std::is_trivially_destructible<T>::value)
     init();
-  move(other);
+  move(std::move(other));
   return *this;
 }
 
@@ -96,7 +99,7 @@ STACK_TEMPLATE T Stack<T, N>::pop() {
   return data[--length];
 }
 
-STACK_TEMPLATE T Stack<T, N>::peek() {
+STACK_TEMPLATE const T &Stack<T, N>::peek() const {
   if (isEmpty())
     throw std::underflow_error("Stack is empty");
   return data[length - 1];
