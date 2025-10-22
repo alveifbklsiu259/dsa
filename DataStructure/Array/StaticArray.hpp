@@ -2,80 +2,69 @@
 #include <cstddef>
 #include <stdexcept>
 
-namespace Array {
+namespace array {
 
 template <typename T, size_t N> class StaticArray {
 private:
-  T data[N];
+  T m_data[N]; // NOLINT
 
-  void assertBounds(int index) const {
-    if (index > N)
-      throw std::out_of_range("Index out of bounds");
+  [[noreturn]] void assertBounds(int index) const {
+    if (index < 0 || index >= N)
+      throw std::out_of_range(
+          "Index out of bounds, index: " + std::to_string(index) +
+          ", capacity: " + std::to_string(N)
+      );
   }
 
 public:
   StaticArray() = default;
 
   StaticArray(std::initializer_list<T> init) {
-    if (init.size() == 0)
-      throw std::invalid_argument("Initializer list must not be empty");
+    if (init.size() == 0) throw std::invalid_argument("Initializer list must not be empty");
 
     int i = 0;
-    for (const T &item : init) {
-      data[i++] = item;
-    }
+    for (const T& item : init) { m_data[i++] = item; }
 
-    while (i < N) {
-      data[i++] = T();
-    }
+    while (i < N) { m_data[i++] = T(); }
   }
 
-  T &at(int index) {
+  T& at(int index) {
     assertBounds(index);
-    return data[index];
+    return m_data[index];
   }
 
-  const T &at(int index) const {
+  const T& at(int index) const {
     assertBounds(index);
-    return data[index];
+    return m_data[index];
   }
 
   void set(int index, T value) {
     assertBounds(index);
-    data[index] = value;
+    m_data[index] = value;
   }
 
-  int size() const { return N; };
+  [[nodiscard]] size_t size() const { return N; };
 
-  const T &operator[](int index) const {
+  const T& operator[](int index) const {
     assertBounds(index);
-    return data[index];
+    return m_data[index];
   }
 
-  T &operator[](int index) {
-    return const_cast<T &>(
-        static_cast<const StaticArray<T, N> &>(*this)[index]);
+  T& operator[](int index) {
+    return const_cast<T&>(static_cast<const StaticArray<T, N>&>(*this)[index]);
   }
 
-  T *begin() { return data; }
-  T *end() { return data + N; }
+  T* begin() { return m_data; }
+  T* end() { return m_data + N; }
 
-  const T *begin() const { return data; }
-  const T *end() const { return data + N; }
+  const T* begin() const { return m_data; }
+  const T* end() const { return m_data + N; }
 
-  std::reverse_iterator<T *> rbegin() {
-    return std::reverse_iterator<T *>(end());
-  }
-  std::reverse_iterator<T *> rend() {
-    return std::reverse_iterator<T *>(begin());
-  }
+  std::reverse_iterator<T*> rbegin() { return std::reverse_iterator<T*>(end()); }
+  std::reverse_iterator<T*> rend() { return std::reverse_iterator<T*>(begin()); }
 
-  const std::reverse_iterator<const T *> rbegin() const {
-    return std::reverse_iterator<const T *>(end());
-  }
-  const std::reverse_iterator<const T *> rend() const {
-    return std::reverse_iterator<const T *>(begin());
-  }
+  std::reverse_iterator<const T*> rbegin() const { return std::reverse_iterator<const T*>(end()); }
+  std::reverse_iterator<const T*> rend() const { return std::reverse_iterator<const T*>(begin()); }
 };
 
-} // namespace Array
+} // namespace array

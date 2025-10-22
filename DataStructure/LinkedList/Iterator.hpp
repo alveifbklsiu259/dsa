@@ -1,46 +1,55 @@
 #pragma once
+#include <concepts>
+#include <type_traits>
+#include <utility>
 
-#include "./Node.hpp"
+namespace linkedlist {
 
-namespace LinkedList {
-template <typename NodeType> class ForwardIterator {
+template <typename N>
+concept Node = requires(N n) {
+  n.value;
+  { n.next } -> std::convertible_to<std::remove_const_t<N>*>;
+};
 
+template <Node NodeType> class ForwardIterator {
 protected:
-  NodeType *current = nullptr;
-  using ValueType = decltype(std::declval<NodeType>().value);
+  NodeType* m_current = nullptr; // NOLINT
 
 public:
-  explicit ForwardIterator(NodeType *node) : current(node) {}
+  using value_type = std::remove_const_t<decltype(std::declval<NodeType>().value)>;
+  using reference = std::conditional_t<std::is_const_v<NodeType>, const value_type&, value_type&>;
+  using pointer = std::conditional_t<std::is_const_v<NodeType>, const value_type*, value_type*>;
 
-  ForwardIterator<NodeType> &operator++() {
-    current = current->next;
+  ForwardIterator() = default;
+  explicit ForwardIterator(NodeType* node) : m_current(node) {}
+
+  ForwardIterator<NodeType>& operator++() {
+    m_current = m_current->next;
     return *this;
   }
 
-  ForwardIterator operator++(int) {
+  ForwardIterator<NodeType> operator++(int) {
     ForwardIterator<NodeType> snapshot = *this;
     ++(*this);
     return snapshot;
   }
+  reference operator*() const { return m_current->value; }
+  pointer operator->() const { return &m_current->value; }
 
-  ValueType &operator*() const { return current->value; }
-
-  bool operator!=(const ForwardIterator<NodeType> &other) const {
-    return current != other.current;
+  bool operator!=(const ForwardIterator<NodeType>& other) const {
+    return m_current != other.m_current;
   }
-
-  bool operator==(const ForwardIterator<NodeType> &other) const {
-    return current == other.current;
+  bool operator==(const ForwardIterator<NodeType>& other) const {
+    return m_current == other.m_current;
   }
 };
 
-template <typename NodeType>
-class BidirectionalIterator : public ForwardIterator<NodeType> {
+template <typename NodeType> class BidirectionalIterator : public ForwardIterator<NodeType> {
 public:
   using ForwardIterator<NodeType>::ForwardIterator;
 
-  BidirectionalIterator<NodeType> &operator--() {
-    this->current = this->current->prev;
+  BidirectionalIterator<NodeType>& operator--() {
+    this->m_current = this->m_current->prev;
     return *this;
   }
 
@@ -53,14 +62,16 @@ public:
 
 template <typename NodeType> class ReverseIterator {
 private:
-  NodeType *current = nullptr;
-  using ValueType = decltype(std::declval<NodeType>().value);
+  NodeType* m_current = nullptr;
 
 public:
-  explicit ReverseIterator(NodeType *node) : current(node) {}
+  using value_type = std::remove_const_t<decltype(std::declval<NodeType>().value)>;
+  using reference = std::conditional_t<std::is_const_v<NodeType>, const value_type&, value_type&>;
+  using pointer = std::conditional_t<std::is_const_v<NodeType>, const value_type*, value_type*>;
+  explicit ReverseIterator(NodeType* node) : m_current(node) {}
 
-  ReverseIterator<NodeType> &operator++() {
-    current = current->prev;
+  ReverseIterator<NodeType>& operator++() {
+    m_current = m_current->prev;
     return *this;
   }
 
@@ -70,8 +81,8 @@ public:
     return snapshot;
   }
 
-  ReverseIterator<NodeType> &operator--() {
-    current = current->next;
+  ReverseIterator<NodeType>& operator--() {
+    m_current = m_current->next;
     return *this;
   }
 
@@ -81,15 +92,15 @@ public:
     return snapshot;
   }
 
-  bool operator==(const ReverseIterator<NodeType> &other) const {
-    return current == other.current;
+  bool operator==(const ReverseIterator<NodeType>& other) const {
+    return m_current == other.m_current;
+  }
+  bool operator!=(const ReverseIterator<NodeType>& other) const {
+    return m_current != other.m_current;
   }
 
-  bool operator!=(const ReverseIterator<NodeType> &other) const {
-    return current != other.current;
-  }
-
-  ValueType &operator*() const { return current->value; }
+  reference operator*() const { return m_current->value; }
+  pointer operator->() const { return m_current->value; }
 };
 
-} // namespace LinkedList
+} // namespace linkedlist

@@ -1,0 +1,40 @@
+---
+# Enable a curated set of checks
+Checks: >
+  -*,
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  readability-*,
+  cppcoreguidelines-*,
+  misc-*,
+  llvm-*,
+  -readability-braces-around-statements,
+  -readability-identifier-length,
+  -fuchsia-trailing-return,
+  -modernize-use-trailing-return-type,
+  # -misc-non-private-member-variables-in-classes,
+  -readability-magic-numbers,
+  -cppcoreguidelines-avoid-magic-numbers
+
+# Treat all warnings from enabled checks as warnings (not errors)
+WarningsAsErrors: ''
+
+# Restrict analysis to project headers (optional)
+HeaderFilterRegex: '.*'
+
+# Respect your .clang-format style for fixes
+FormatStyle: file
+
+# Customize options for specific checks
+CheckOptions:
+  - { key: readability-identifier-naming.NamespaceCase, value: lower_case }
+  - { key: readability-identifier-naming.ClassCase, value: CamelCase }
+  - { key: readability-identifier-naming.StructCase, value: CamelCase }
+  - { key: readability-identifier-naming.ClassMemberCase, value: camelBack }
+  - { key: readability-identifier-naming.PrivateMemberPrefix, value: m_ }
+  - { key: readability-identifier-naming.FunctionCase, value: camelBack }
+  - { key: readability-identifier-naming.VariableCase, value:  camelBack}
+  - { key: readability-identifier-naming.MacroDefinitionCase, value: UPPER_CASE }
