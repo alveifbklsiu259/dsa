@@ -3,11 +3,12 @@
 #include "./Iterator.hpp"
 #include "./LinkedListBase.hpp"
 #include "./Node.hpp"
+#include <gsl/gsl>
 
 namespace linkedlist {
 template <typename T> class DoublyLinkedList : public LinkedListBase<DoublyLinkNode<T>> {
 private:
-  DoublyLinkNode<T>* tail = nullptr;
+  DoublyLinkNode<T>* tail = nullptr; // NOLINT
 
 public:
   using iterator = BidirectionalIterator<DoublyLinkNode<T>>;
@@ -16,25 +17,26 @@ public:
   using constReverseIterator = ReverseIterator<DoublyLinkNode<T>>;
 
   void pushFront(const T& value) override {
-    DoublyLinkNode<T>* newNode = new DoublyLinkNode<T>(value, this->head);
+    gsl::owner<DoublyLinkNode<T>*> newNode = new DoublyLinkNode<T>(value, this->head);
     if (this->head) { this->head->prev = newNode; }
-    if (!tail) tail = newNode;
+    if (tail == nullptr) tail = newNode;
 
     this->head = newNode;
     this->size++;
   }
 
   void pushFront(T&& value) override {
-    DoublyLinkNode<T>* newNode = new DoublyLinkNode<T>(std::move(value), this->head);
+    gsl::owner<DoublyLinkNode<T>*> newNode = new DoublyLinkNode<T>(std::move(value), this->head);
     if (this->head) { this->head->prev = newNode; }
-    if (!tail) tail = newNode;
+    if (tail == nullptr) tail = newNode;
 
     this->head = newNode;
     this->size++;
   }
 
   template <typename... Args> T& emplaceFront(Args&&... args) {
-    DoublyLinkNode<T>* newNode = new DoublyLinkNode<T>(T(std::forward<Args>(args)...), this->head);
+    gsl::owner<DoublyLinkNode<T>*> newNode =
+        new DoublyLinkNode<T>(T(std::forward<Args>(args)...), this->head);
     if (this->head) this->head->prev = newNode;
     if (!this->tail) this->tail = newNode;
 
@@ -44,7 +46,7 @@ public:
   }
 
   void pushBack(const T& value) {
-    DoublyLinkNode<T>* newNode = new DoublyLinkNode<T>(value, nullptr, tail);
+    gsl::owner<DoublyLinkNode<T>*> newNode = new DoublyLinkNode<T>(value, nullptr, tail);
     if (tail) {
       tail->next = newNode;
     } else {
@@ -56,7 +58,7 @@ public:
   }
 
   void pushBack(T&& value) {
-    DoublyLinkNode<T>* newNode = new DoublyLinkNode<T>(value, nullptr, tail);
+    gsl::owner<DoublyLinkNode<T>*> newNode = new DoublyLinkNode<T>(std::move(value), nullptr, tail);
     if (tail) {
       tail->next = newNode;
     } else {
@@ -68,7 +70,7 @@ public:
   }
 
   template <typename... Args> T& emplaceBack(Args&&... args) {
-    DoublyLinkNode<T>* newNode =
+    gsl::owner<DoublyLinkNode<T>*> newNode =
         new DoublyLinkNode<T>(T(std::forward<Args>(args)...), nullptr, tail);
     if (tail) {
       tail->next = newNode;
@@ -82,7 +84,7 @@ public:
   }
 
   void popBack() {
-    if (!tail) throw EmptyListException();
+    if (tail == nullptr) throw EmptyListException();
 
     DoublyLinkNode<T>* temp = tail;
     tail = tail->prev;
@@ -92,17 +94,17 @@ public:
       this->head = nullptr;
     }
 
-    delete temp;
+    delete temp; // NOLINT
     this->size--;
   }
 
   T& back() {
-    if (!tail) throw EmptyListException();
+    if (tail == nullptr) throw EmptyListException();
     return tail->value;
   }
 
   const T& back() const {
-    if (!tail) throw EmptyListException();
+    if (tail == nullptr) throw EmptyListException();
     return tail->value;
   }
 
@@ -112,7 +114,7 @@ public:
       std::cout << current->value << " <-- ";
       current = current->prev;
     }
-    std::cout << "nullptr" << std::endl;
+    std::cout << "nullptr" << '\n';
   }
 
   void reverse() override {

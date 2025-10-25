@@ -24,7 +24,7 @@ protected:
   }
 
   void deepCopy(const LinkedListBase& other) {
-    if (!other.head) {
+    if (other.head == nullptr) {
       head = nullptr;
       size = 0;
       return;
@@ -98,7 +98,7 @@ public:
   }
 
   void popFront() {
-    if (!head) throw EmptyListException();
+    if (head == nullptr) throw EmptyListException();
     NodeType* temp = head;
     head = head->next;
     delete temp;
@@ -106,12 +106,12 @@ public:
   }
 
   ValueType& front() {
-    if (!head) throw EmptyListException();
+    if (head == nullptr) throw EmptyListException();
     return head->value;
   }
 
   const ValueType& front() const {
-    if (!head) throw EmptyListException();
+    if (head == nullptr) throw EmptyListException();
     return head->value;
   }
 

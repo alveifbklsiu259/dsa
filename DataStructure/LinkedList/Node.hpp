@@ -4,7 +4,7 @@
 namespace linkedlist {
 template <typename T> class NodeBase {
 public:
-  T value;
+  T value; // NOLINT
   explicit NodeBase(const T& value) : value(value) {};
   explicit NodeBase(T&& value) : value(std::move(value)) {};
 
@@ -18,7 +18,7 @@ public:
 
 template <typename T> class SinglyLinkNode : public NodeBase<T> {
 public:
-  SinglyLinkNode<T>* next = nullptr;
+  SinglyLinkNode<T>* next = nullptr; // NOLINT
   explicit SinglyLinkNode(const T& value, SinglyLinkNode<T>* next = nullptr)
       : NodeBase<T>(value), next(next) {}
   explicit SinglyLinkNode(T&& value, SinglyLinkNode<T>* next = nullptr)
@@ -31,17 +31,17 @@ public:
 
 template <typename T> class DoublyLinkNode : public NodeBase<T> {
 public:
-  DoublyLinkNode<T>* next = nullptr;
-  DoublyLinkNode<T>* prev = nullptr;
+  DoublyLinkNode<T>* next = nullptr; // NOLINT
+  DoublyLinkNode<T>* prev = nullptr; // NOLINT
   explicit DoublyLinkNode(
       const T& value,
-      DoublyLinkNode<T>* next = nullptr,
+      DoublyLinkNode<T>* next = nullptr, // NOLINT
       DoublyLinkNode<T>* prev = nullptr
   )
       : NodeBase<T>(value), next(next), prev(prev) {}
   explicit DoublyLinkNode(
       T&& value,
-      DoublyLinkNode<T>* next = nullptr,
+      DoublyLinkNode<T>* next = nullptr, // NOLINT
       DoublyLinkNode<T>* prev = nullptr
   )
       : NodeBase<T>(std::move(value)), next(next), prev(prev) {}

@@ -15,6 +15,7 @@ Checks: >
   -readability-identifier-length,
   -fuchsia-trailing-return,
   -modernize-use-trailing-return-type,
+  -modernize-use-auto,
   # -misc-non-private-member-variables-in-classes,
   -readability-magic-numbers,
   -cppcoreguidelines-avoid-magic-numbers
