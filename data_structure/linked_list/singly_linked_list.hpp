@@ -1,7 +1,7 @@
 #pragma once
 
-#include "./LinkedListBase.hpp"
-#include "./Node.hpp"
+#include "./linked_list_base.hpp"
+#include "./node.hpp"
 
 namespace linkedlist {
 template <typename T> class SinglyLinkedList : public LinkedListBase<SinglyLinkNode<T>> {};

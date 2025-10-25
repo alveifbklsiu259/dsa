@@ -1,6 +1,6 @@
 #pragma once
-#include "../Array/DynamicArray.hpp"
-#include "../LinkedList/SinglyLinkedList.hpp"
+#include "../array/dynamic_array.hpp"
+#include "../linked_list/singly_linked_list.hpp"
 #include <concepts>
 #include <functional>
 #include <sstream>

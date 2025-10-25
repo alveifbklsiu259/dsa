@@ -1,8 +1,8 @@
 #pragma once
-#include "./Exception.hpp"
-#include "./Iterator.hpp"
-#include "./LinkedListBase.hpp"
-#include "./Node.hpp"
+#include "./exception.hpp"
+#include "./iterator.hpp"
+#include "./linked_list_base.hpp"
+#include "./node.hpp"
 #include <gsl/gsl>
 
 namespace linkedlist {
