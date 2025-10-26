@@ -12,14 +12,14 @@ namespace linkedlist {
 template <typename NodeType> class LinkedListBase {
 protected:
   using ValueType = decltype(std::declval<NodeType>().value);
-  size_t size = 0;
-  NodeType* head = nullptr;
+  size_t size = 0;          // NOLINT
+  NodeType* head = nullptr; // NOLINT
 
   void release() noexcept {
     while (head) {
       NodeType* temp = head;
       head = head->next;
-      delete temp;
+      delete temp; // NOLINT
     }
   }
 
@@ -30,17 +30,17 @@ protected:
       return;
     }
     size = other.size;
-    head = new NodeType(other.head->value);
+    head = new NodeType(other.head->value); // NOLINT
     NodeType* current = head;
     NodeType* otherCurrent = other.head->next;
     while (otherCurrent) {
-      current->next = new NodeType(otherCurrent->value);
+      current->next = new NodeType(otherCurrent->value); // NOLINT
       current = current->next;
       otherCurrent = otherCurrent->next;
     }
   }
 
-  void move(LinkedListBase&& other) noexcept {
+  void move(LinkedListBase&& other) noexcept { // NOLINT
     size = other.size;
     head = std::exchange(other.head, nullptr);
     other.size = 0;
@@ -75,24 +75,21 @@ public:
 
   ~LinkedListBase() { release(); }
 
-  int getSize() const { return size; }
-  bool isEmpty() const { return head == nullptr; }
+  [[nodiscard]] int getSize() const noexcept { return size; }
+  [[nodiscard]] bool isEmpty() const noexcept { return head == nullptr; }
 
   virtual void pushFront(const ValueType& value) {
-    // std::cout << "inside LinkedListBase pushFront - lvalue" << std::endl;
-    head = new NodeType(value, head);
+    head = new NodeType(value, head); // NOLINT
     size++;
   }
 
   virtual void pushFront(ValueType&& value) {
-    // std::cout << "inside LinkedListBase pushFront - rvalue" << std::endl;
-    head = new NodeType(std::move(value), head);
+    head = new NodeType(std::move(value), head); // NOLINT
     size++;
   }
 
   template <typename... Args> ValueType& emplaceFront(Args... args) {
-    // std::cout << "inside LinkedListBase::emplaceFront" << std::endl;
-    head = new NodeType(head, std::forward<Args>(args)...);
+    head = new NodeType(head, std::forward<Args>(args)...); // NOLINT
     size++;
     return head->value;
   }
@@ -101,7 +98,7 @@ public:
     if (head == nullptr) throw EmptyListException();
     NodeType* temp = head;
     head = head->next;
-    delete temp;
+    delete temp; // NOLINT
     size--;
   }
 
