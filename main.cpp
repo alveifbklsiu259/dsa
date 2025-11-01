@@ -1,22 +1,39 @@
-#include "./data_structure/hash_map/hash_map.hpp"
+#include "data_structure/hash_map/hash_map.hpp"
+#include "data_structure/hash_set/hash_set.hpp"
 #include <cmath>
+#include <forward_list>
 #include <stack>
-int main() {
-  // maybe change the color of comment, it is the same as virtual text now
-  // can we have that same indent for ruff? (closing parenthesis ends in a new line)
-  //
-  std::stack<int> st;
+#include <unordered_map>
+#include <unordered_set>
 
-  hashmap::HashMap<std::string, int> s;
-  std::pair<std::string, int> data{"foo", 10};
-  std::pair<std::string, int> data2{"bar", 20};
-  std::pair<std::string, int> data3{"baz", 30};
-  s.insert(data);
-  s.insert(data2);
-  s.insert(data3);
-  std::cout << std::boolalpha << s.contains("foo") << '\n';
-  std::cout << s["baz"] << '\n';
-  std::cout << s.at("bar") << '\n';
+int main() {
+  hashmap::HashMap<int, int> m;
+  m.insert(1, 10);
+  m.insert(std::make_pair(2, 20));
+  m.insert(std::pair(3, 30));
+  // m.insert({3, 30}); // no ok, why?
+
+  // std::unordered_map<int, int> m;
+  // m.insert({1, 10});
+  // std::cout << std::boolalpha << m.contains(1) << '\n';
+  // std::unordered_set<int> s{1, 2, 3, 4, 5};
+  // std::cout << std::boolalpha << s.contains(13) << '\n';
+  // -----------------
+  // hashset::HashSet<int> set{13};
+  // std::cout << std::boolalpha << set.contains(13) << '\n';
+  // -----------------
+  // hashmap::HashMap<std::string, int> s;
+  // std::pair<std::string, int> data{"foo", 10};
+  // std::pair<std::string, int> data2{"bar", 20};
+  // std::pair<std::string, int> data3{"baz", 30};
+  // s.insert(data);
+  // s.insert(data2);
+  // s.insert(data3);
+  // std::cout << s.erase("foo") << '\n';
+  // std::cout << std::boolalpha << s.contains("foo") << '\n';
+  // std::cout << std::boolalpha << s.contains("foo") << '\n';
+  // std::cout << s["baz"] << '\n';
+  // std::cout << s.at("bar") << '\n';
+  // -------------------------
   return 0;
 }
-// - add emplace to other container

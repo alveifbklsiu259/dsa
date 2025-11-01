@@ -222,6 +222,20 @@ public:
   }
 
   [[nodiscard]] bool contains(const K& key) const noexcept { return find(key) != end(); }
+  [[nodiscard]] size_t getSize() const noexcept { return m_length; }
+
+  size_t erase(const K& key) {
+    BucketList& list = getList(key);
+    size_t removed =
+        list.removeIf([&](const HashMapKeyVal<K, V>& kv) { return m_keyEqual(kv.getKey(), key); });
+    m_length -= removed;
+    return removed;
+  }
+
+  void clear() {
+    for (size_t i = 0; i < m_table.getCapacity(); i++) m_table[i].clear();
+    m_length = 0;
+  }
 
   V& operator[](const K& key) {
     Iterator it = find(key);

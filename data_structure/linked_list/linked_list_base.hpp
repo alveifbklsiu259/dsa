@@ -1,12 +1,12 @@
 #pragma once
 #include "./exception.hpp"
 #include "./iterator.hpp"
+#include <concepts>
 #include <initializer_list>
 #include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
-
 namespace linkedlist {
 
 template <typename NodeType> class LinkedListBase {
@@ -14,14 +14,6 @@ protected:
   using ValueType = decltype(std::declval<NodeType>().value);
   size_t size = 0;          // NOLINT
   NodeType* head = nullptr; // NOLINT
-
-  void release() noexcept {
-    while (head) {
-      NodeType* temp = head;
-      head = head->next;
-      delete temp; // NOLINT
-    }
-  }
 
   void deepCopy(const LinkedListBase& other) {
     if (other.head == nullptr) {
@@ -58,7 +50,7 @@ public:
   LinkedListBase(const LinkedListBase& other) { deepCopy(other); }
   LinkedListBase& operator=(const LinkedListBase& other) {
     if (this != &other) {
-      release();
+      clear();
       deepCopy(other);
     }
     return *this;
@@ -67,13 +59,13 @@ public:
   LinkedListBase(LinkedListBase&& other) noexcept { move(std::move(other)); }
   LinkedListBase& operator=(LinkedListBase&& other) noexcept {
     if (this != &other) {
-      release();
+      clear();
       move(std::move(other));
     }
     return *this;
   }
 
-  ~LinkedListBase() { release(); }
+  ~LinkedListBase() noexcept { clear(); }
 
   [[nodiscard]] int getSize() const noexcept { return size; }
   [[nodiscard]] bool isEmpty() const noexcept { return head == nullptr; }
@@ -92,6 +84,15 @@ public:
     head = new NodeType(head, std::forward<Args>(args)...); // NOLINT
     size++;
     return head->value;
+  }
+
+  void clear() noexcept {
+    while (head) {
+      NodeType* temp = head;
+      head = head->next;
+      delete temp; // NOLINT
+    }
+    size = 0;
   }
 
   void popFront() {
@@ -114,6 +115,29 @@ public:
 
   void fromVector(const std::vector<ValueType>& vec) {
     for (auto it = vec.rbegin(); it != vec.rend(); ++it) pushFront(*it);
+  }
+
+  template <typename Pred>
+    requires std::predicate<Pred, const ValueType&>
+  size_t removeIf(Pred pred) {
+    size_t removedCount = 0;
+    NodeType** link = &head;
+    while (*link) {
+      if (pred((*link)->value)) {
+        NodeType* temp = *link;
+        *link = (*link)->next;
+        delete temp; // NOLINT
+        size--;
+        removedCount++;
+      } else {
+        link = &((*link)->next);
+      }
+    }
+    return removedCount;
+  }
+
+  size_t remove(const ValueType& value) {
+    return removeIf([&](const ValueType& v) { return v == value; });
   }
 
   void print() const {
@@ -139,11 +163,11 @@ public:
     head = prev;
   }
 
-  Iterator begin() { return Iterator(head); }
-  ConstIterator begin() const { return ConstIterator(head); }
+  Iterator begin() noexcept(noexcept(Iterator(head))) { return Iterator(head); }
+  ConstIterator begin() const noexcept(noexcept(Iterator(head))) { return ConstIterator(head); }
 
-  Iterator end() { return Iterator(nullptr); }
-  ConstIterator end() const { return ConstIterator(nullptr); }
+  Iterator end() noexcept(noexcept(Iterator(nullptr))) { return Iterator(nullptr); }
+  ConstIterator end() const noexcept(noexcept(Iterator(nullptr))) { return ConstIterator(nullptr); }
 };
 
 } // namespace linkedlist

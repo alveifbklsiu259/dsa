@@ -2,8 +2,8 @@ BasedOnStyle: LLVM
 AllowShortIfStatementsOnASingleLine: true
 AllowShortLoopsOnASingleLine: true
 AllowShortBlocksOnASingleLine: true
-ColumnLimit: 100
 PointerAlignment: Left
+ColumnLimit: 100
 BinPackParameters: false
 AlignAfterOpenBracket: BlockIndent
 AllowAllParametersOfDeclarationOnNextLine: false

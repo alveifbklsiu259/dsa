@@ -85,8 +85,8 @@ public:
 
   ~DynamicArray() { release(); };
 
-  size_t getSize() const noexcept { return length; };
-  size_t getCapacity() const noexcept { return capacity; };
+  [[nodiscard]] size_t getSize() const noexcept { return length; };
+  [[nodiscard]] size_t getCapacity() const noexcept { return capacity; };
 
   void clear() {
     for (int i = 0; i < length; i++) { data[i].~T(); }
