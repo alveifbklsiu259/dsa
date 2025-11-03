@@ -247,7 +247,7 @@ public:
 
   Iterator begin() {
     for (size_t i = 0; i < m_table.getCapacity(); i++) {
-      auto it = m_table[i].begin();
+      typename BucketList::Iterator it = m_table[i].begin();
       if (it != m_table[i].end()) return Iterator(this, i, it);
     }
     return end();
@@ -255,17 +255,15 @@ public:
 
   ConstIterator begin() const {
     for (size_t i = 0; i < m_table.getCapacity(); i++) {
-      auto it = m_table[i].begin();
+      typename BucketList::ConstIterator it = m_table[i].begin();
       if (it != m_table[i].end()) return ConstIterator(this, i, it);
     }
     return end();
   }
 
-  Iterator end() {
-    return Iterator(nullptr, m_table.getCapacity(), typename BucketList::Iterator());
-  }
+  Iterator end() { return Iterator(this, m_table.getCapacity(), typename BucketList::Iterator()); }
   ConstIterator end() const {
-    return ConstIterator(nullptr, m_table.getCapacity(), typename BucketList::ConstIterator());
+    return ConstIterator(this, m_table.getCapacity(), typename BucketList::ConstIterator());
   }
 };
 } // namespace hashmap

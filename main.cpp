@@ -7,12 +7,21 @@
 #include <unordered_set>
 
 int main() {
-  hashmap::HashMap<int, int> m;
-  m.insert(1, 10);
-  m.insert(std::make_pair(2, 20));
-  m.insert(std::pair(3, 30));
-  // m.insert({3, 30}); // no ok, why?
+  // hashmap::HashMap<int, int> m;
+  // m.insert(1, 10);
+  // m.insert(std::make_pair(2, 20));
+  // m.insert(std::pair(3, 30));
+  // for (auto a : m) { std::cout << a.getKey() << '\n'; }
 
+  hashset::HashSet<int> s;
+  s.insert(1);
+  s.insert(2);
+  s.insert(3);
+
+  for (int n : s) { std::cout << n << '\n'; }
+
+  // std::cout << std::boolalpha << s.contains(1) << '\n';
+  // for (int i : s) { std::cout << i << '\n'; }
   // std::unordered_map<int, int> m;
   // m.insert({1, 10});
   // std::cout << std::boolalpha << m.contains(1) << '\n';
