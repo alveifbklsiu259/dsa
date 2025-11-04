@@ -245,7 +245,7 @@ public:
     return list.front().getValue();
   }
 
-  Iterator begin() {
+  Iterator begin() noexcept {
     for (size_t i = 0; i < m_table.getCapacity(); i++) {
       typename BucketList::Iterator it = m_table[i].begin();
       if (it != m_table[i].end()) return Iterator(this, i, it);
@@ -253,7 +253,7 @@ public:
     return end();
   }
 
-  ConstIterator begin() const {
+  ConstIterator begin() const noexcept {
     for (size_t i = 0; i < m_table.getCapacity(); i++) {
       typename BucketList::ConstIterator it = m_table[i].begin();
       if (it != m_table[i].end()) return ConstIterator(this, i, it);
@@ -261,8 +261,10 @@ public:
     return end();
   }
 
-  Iterator end() { return Iterator(this, m_table.getCapacity(), typename BucketList::Iterator()); }
-  ConstIterator end() const {
+  Iterator end() noexcept {
+    return Iterator(this, m_table.getCapacity(), typename BucketList::Iterator());
+  }
+  ConstIterator end() const noexcept {
     return ConstIterator(this, m_table.getCapacity(), typename BucketList::ConstIterator());
   }
 };

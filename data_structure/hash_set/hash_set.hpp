@@ -2,6 +2,7 @@
 #include "../hash_map/hash_map.hpp"
 #include <concepts>
 #include <functional>
+#include <variant>
 
 namespace hashset {
 
@@ -12,13 +13,14 @@ template <typename Key, typename Hasher = std::hash<Key>, typename KeyEqual = st
 class HashSet {
 
 private:
-  hashmap::HashMap<Key, bool, Hasher, KeyEqual> m_map;
+  using DummyT = std::monostate;
+  hashmap::HashMap<Key, DummyT, Hasher, KeyEqual> m_map;
 
 public:
   class Iterator {
 
   private:
-    using MapIterator = hashmap::HashMap<Key, bool, Hasher, KeyEqual>::Iterator;
+    using MapIterator = hashmap::HashMap<Key, DummyT, Hasher, KeyEqual>::Iterator;
     MapIterator m_it;
 
   public:
@@ -52,7 +54,7 @@ public:
 
   HashSet() = default;
   HashSet(std::initializer_list<Key> init) {
-    for (const Key& key : init) m_map.insert(key, true);
+    for (const Key& key : init) m_map.insert(key, DummyT{});
   };
 
   bool contains(const Key& key) const noexcept { return m_map.contains(key); }
@@ -64,31 +66,25 @@ public:
   [[nodiscard]] size_t getSize() const noexcept { return m_map.getSize(); }
 
   std::pair<Iterator, bool> insert(const Key& key) {
-    auto [it, inserted] = m_map.insert(key, true);
+    auto [it, inserted] = m_map.insert(key, DummyT{});
     return {Iterator(it), inserted};
   }
 
   std::pair<Iterator, bool> insert(Key&& key) {
-    auto [it, inserted] = m_map.insert(std::move(key), true);
+    auto [it, inserted] = m_map.insert(std::move(key), DummyT{});
     return {Iterator(it), inserted};
   }
 
-  Iterator begin() { return Iterator(m_map.begin()); }
+  template <typename... Args> std::pair<Iterator, bool> emplace(Args&&... args) {
+    auto [it, inserted] = m_map.emplace(std::forward<Args>(args)..., DummyT{});
+    return {Iterator(it), inserted};
+  }
 
-  ConstIterator begin() const { return ConstIterator(m_map.begin()); }
+  Iterator begin() noexcept { return Iterator(m_map.begin()); }
 
-  Iterator end() { return Iterator(m_map.end()); }
-  ConstIterator end() const { return ConstIterator(m_map.end()); }
+  ConstIterator begin() const noexcept { return ConstIterator(m_map.begin()); }
 
-  // iterator problem, unordered_map return std::pair<K, V> for for(auto a: m);
-  // my current implementation returns HashMapKeyVal;
-  //
-  // also we may need a new iterator for hash set, because for (auto a: s) will return std::pair<K,
-  // bool> if we don't hamdle this.
-
-  // begin, end, clear, empty, emplace,
-  // what do they do: buecket, bucket_size, buecket_count, cbegin, cend
+  Iterator end() noexcept { return Iterator(m_map.end()); }
+  ConstIterator end() const noexcept { return ConstIterator(m_map.end()); }
 };
 } // namespace hashset
-//
-// add noexcept to begin, end

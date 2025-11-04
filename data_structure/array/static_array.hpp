@@ -54,11 +54,11 @@ public:
     return const_cast<T&>(static_cast<const StaticArray<T, N>&>(*this)[index]);
   }
 
-  T* begin() { return m_data; }
-  T* end() { return m_data + N; }
+  T* begin() noexcept { return m_data; }
+  T* end() noexcept { return m_data + N; }
 
-  const T* begin() const { return m_data; }
-  const T* end() const { return m_data + N; }
+  const T* begin() const noexcept { return m_data; }
+  const T* end() const noexcept { return m_data + N; }
 
   std::reverse_iterator<T*> rbegin() { return std::reverse_iterator<T*>(end()); }
   std::reverse_iterator<T*> rend() { return std::reverse_iterator<T*>(begin()); }

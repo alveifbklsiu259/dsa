@@ -128,16 +128,16 @@ public:
     }
   }
 
-  iterator begin() { return iterator(this->head); }
-  constIterator begin() const { return constIterator(this->head); }
+  iterator begin() noexcept { return iterator(this->head); }
+  constIterator begin() const noexcept { return constIterator(this->head); }
 
-  iterator end() { return iterator(tail); }
-  constIterator end() const { return constIterator(tail); }
+  iterator end() noexcept { return iterator(tail); }
+  constIterator end() const noexcept { return constIterator(tail); }
 
-  reverseIterator rbegin() { return reverseIterator(tail); }
-  constReverseIterator rbegin() const { return constReverseIterator(tail); }
+  reverseIterator rbegin() noexcept { return reverseIterator(tail); }
+  constReverseIterator rbegin() const noexcept { return constReverseIterator(tail); }
 
-  reverseIterator rend() { return reverseIterator(nullptr); }
-  constReverseIterator rend() const { return constReverseIterator(nullptr); }
+  reverseIterator rend() noexcept { return reverseIterator(nullptr); }
+  constReverseIterator rend() const noexcept { return constReverseIterator(nullptr); }
 };
 } // namespace linkedlist

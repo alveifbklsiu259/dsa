@@ -8,66 +8,66 @@ namespace array {
 
 template <typename T> class DynamicArray {
 private:
-  T* data = nullptr;
-  size_t length;
-  size_t capacity;
+  T* m_data = nullptr;
+  size_t m_length;
+  size_t m_capacity;
 
   void assertBounds(int index) const {
-    if (index < 0 || index >= length)
+    if (index < 0 || index >= m_length)
       throw std::out_of_range(
           "Index out of bounds, index: " + std::to_string(index) +
-          ", size: " + std::to_string(length)
+          ", size: " + std::to_string(m_length)
       );
   }
 
   void release() {
     clear();
-    ::operator delete(data);
-    data = nullptr;
-    length = 0;
-    capacity = 0;
+    ::operator delete(m_data);
+    m_data = nullptr;
+    m_length = 0;
+    m_capacity = 0;
   }
 
   void deepCopy(const DynamicArray<T>& other) {
-    length = other.length;
-    capacity = other.capacity;
-    data = static_cast<T*>(::operator new(capacity * sizeof(T)));
-    for (int i = 0; i < length; i++) new (data + i) T(other.data[i]);
+    m_length = other.m_length;
+    m_capacity = other.m_capacity;
+    m_data = static_cast<T*>(::operator new(m_capacity * sizeof(T)));
+    for (int i = 0; i < m_length; i++) new (m_data + i) T(other.m_data[i]);
   }
 
-  void move(DynamicArray<T>&& other) noexcept {
-    length = other.length;
-    capacity = other.capacity;
-    data = other.data;
-    other.capacity = 0;
-    other.length = 0;
-    other.data = nullptr;
+  void move(DynamicArray<T>&& other) noexcept { // NOLINT
+    m_length = other.m_length;
+    m_capacity = other.m_capacity;
+    m_data = other.m_data;
+    other.m_capacity = 0;
+    other.m_length = 0;
+    other.m_data = nullptr;
   }
 
 public:
-  DynamicArray() : capacity(2), length(0) {
-    data = static_cast<T*>(::operator new(sizeof(T) * capacity));
+  DynamicArray() : m_capacity(2), m_length(0) {
+    m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
   };
 
-  DynamicArray(size_t size) : capacity(size), length(0) {
+  DynamicArray(size_t size) : m_capacity(size), m_length(0) {
     if (size <= 0) throw std::invalid_argument("Size must be positive");
-    data = static_cast<T*>(::operator new(sizeof(T) * capacity));
+    m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
   }
 
-  DynamicArray(std::initializer_list<T> init) : capacity(init.size()), length(init.size()) {
+  DynamicArray(std::initializer_list<T> init) : m_capacity(init.size()), m_length(init.size()) {
     if (init.size() == 0) throw std::invalid_argument("Initializer list must not be empty");
 
-    data = static_cast<T*>(::operator new(sizeof(T) * capacity));
+    m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
     int i = 0;
     for (const T& element : init) {
-      new (data + i) T(element);
+      new (m_data + i) T(element);
       i++;
     }
   }
 
-  DynamicArray(const DynamicArray<T>& other) { deepCopy(other); };
+  DynamicArray(const DynamicArray<T>& other) { deepCopy(other); }; // NOLINT
 
-  DynamicArray(DynamicArray<T>&& other) noexcept { move(std::move(other)); };
+  DynamicArray(DynamicArray<T>&& other) noexcept { move(std::move(other)); }; // NOLINT
 
   DynamicArray<T>& operator=(const DynamicArray<T>& other) {
     if (&other == this) return *this;
@@ -85,38 +85,38 @@ public:
 
   ~DynamicArray() { release(); };
 
-  [[nodiscard]] size_t getSize() const noexcept { return length; };
-  [[nodiscard]] size_t getCapacity() const noexcept { return capacity; };
+  [[nodiscard]] size_t getSize() const noexcept { return m_length; };
+  [[nodiscard]] size_t getCapacity() const noexcept { return m_capacity; };
 
   void clear() {
-    for (int i = 0; i < length; i++) { data[i].~T(); }
-    length = 0;
+    for (int i = 0; i < m_length; i++) { m_data[i].~T(); }
+    m_length = 0;
   }
 
-  void push_back(const T& value) {
-    if (length == capacity) reserve(capacity * 2);
-    new (data + length) T(value);
-    length++;
+  void pushBack(const T& value) {
+    if (m_length == m_capacity) reserve(m_capacity * 2);
+    new (m_data + m_length) T(value);
+    m_length++;
   }
 
-  void push_back(T&& value) {
-    if (length == capacity) reserve(capacity * 2);
-    new (data + length) T(std::move(value));
-    length++;
+  void pushBack(T&& value) {
+    if (m_length == m_capacity) reserve(m_capacity * 2);
+    new (m_data + m_length) T(std::move(value));
+    m_length++;
   }
 
   void resize(size_t newSize) {
-    if (newSize > length) {
-      if (newSize > capacity) reserve(std::max(newSize, static_cast<size_t>(capacity * 2)));
-      for (int i = length; i < newSize; i++) new (data + i) T{};
-    } else if (newSize < length) {
-      for (int i = newSize; i < length; i++) { data[i].~T(); }
+    if (newSize > m_length) {
+      if (newSize > m_capacity) reserve(std::max(newSize, static_cast<size_t>(m_capacity * 2)));
+      for (size_t i = m_length; i < newSize; i++) new (m_data + i) T{};
+    } else if (newSize < m_length) {
+      for (size_t i = newSize; i < m_length; i++) { m_data[i].~T(); }
     }
-    length = newSize;
+    m_length = newSize;
   }
 
   void reserve(size_t newCapacity) {
-    if (newCapacity <= capacity) return;
+    if (newCapacity <= m_capacity) return;
     size_t i = 0;
     T* newData = static_cast<T*>(::operator new(sizeof(T) * newCapacity));
 
@@ -124,13 +124,13 @@ public:
       constexpr bool canSafelyMove =
           std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
 
-      std::cout << (canSafelyMove ? "reserve by moving" : "reserve by copying") << std::endl;
+      std::cout << (canSafelyMove ? "reserve by moving" : "reserve by copying") << '\n';
 
-      while (i < length) {
+      while (i < m_length) {
         if constexpr (canSafelyMove) {
-          new (newData + i) T(std::move(data[i]));
+          new (newData + i) T(std::move(m_data[i]));
         } else {
-          new (newData + i) T(data[i]);
+          new (newData + i) T(m_data[i]);
         }
         i++;
       }
@@ -140,36 +140,26 @@ public:
       throw;
     }
 
-    for (size_t i = 0; i < length; i++) { data[i].~T(); }
-    ::operator delete(data);
-    data = newData;
-    capacity = newCapacity;
+    for (size_t i = 0; i < m_length; i++) { m_data[i].~T(); }
+    ::operator delete(m_data);
+    m_data = newData;
+    m_capacity = newCapacity;
   }
 
   const T& operator[](int index) const {
     assertBounds(index);
-    return data[index];
+    return m_data[index];
   }
 
   T& operator[](int index) {
     assertBounds(index);
-    return data[index];
+    return m_data[index];
   }
 
-  T* begin() { return data; }
-  T* end() { return data + length; }
+  T* begin() noexcept { return m_data; }
+  T* end() noexcept { return m_data + m_length; }
 
-  const T* begin() const { return data; }
-  const T* end() const { return data + length; }
+  const T* begin() const noexcept { return m_data; }
+  const T* end() const noexcept { return m_data + m_length; }
 };
 } // namespace array
-/**
- *
-- std::is_nothrow_move_constructible optimization
-std::vector prefers moving only if it’s noexcept, otherwise it falls back to copying (to maintain
-strong exception safety). You could write: if constexpr (std::is_nothrow_move_constructible_v<T> ||
-!std::is_copy_constructible_v<T>) {
-    // move
-} else {
-    // copy
-*/
