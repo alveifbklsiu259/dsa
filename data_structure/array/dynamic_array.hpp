@@ -31,7 +31,7 @@ private:
   void deepCopy(const DynamicArray<T>& other) {
     m_length = other.m_length;
     m_capacity = other.m_capacity;
-    m_data = static_cast<T*>(::operator new(m_capacity * sizeof(T)));
+    m_data = static_cast<T*>(::operator new(m_capacity * sizeof(T), std::align_val_t{alignof(T)}));
     for (int i = 0; i < m_length; i++) new (m_data + i) T(other.m_data[i]);
   }
 
@@ -46,18 +46,18 @@ private:
 
 public:
   DynamicArray() : m_capacity(2), m_length(0) {
-    m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
+    m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity, std::align_val_t{alignof(T)}));
   };
 
   DynamicArray(size_t size) : m_capacity(size), m_length(0) {
     if (size <= 0) throw std::invalid_argument("Size must be positive");
-    m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
+    m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity, std::align_val_t{alignof(T)}));
   }
 
   DynamicArray(std::initializer_list<T> init) : m_capacity(init.size()), m_length(init.size()) {
     if (init.size() == 0) throw std::invalid_argument("Initializer list must not be empty");
 
-    m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
+    m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity, std::align_val_t{alignof(T)}));
     int i = 0;
     for (const T& element : init) {
       new (m_data + i) T(element);
@@ -118,7 +118,8 @@ public:
   void reserve(size_t newCapacity) {
     if (newCapacity <= m_capacity) return;
     size_t i = 0;
-    T* newData = static_cast<T*>(::operator new(sizeof(T) * newCapacity));
+    T* newData =
+        static_cast<T*>(::operator new(sizeof(T) * newCapacity, std::align_val_t{alignof(T)}));
 
     try {
       constexpr bool canSafelyMove =
