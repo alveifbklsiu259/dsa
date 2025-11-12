@@ -56,20 +56,18 @@ STACK_TEMPLATE Stack<T, N>::Stack(const Stack<T, N>& other) { copy(other); }
 
 STACK_TEMPLATE
 template <size_t M> Stack<T, N>& Stack<T, N>::operator=(const Stack<T, M>& other) {
-  Stack<T, M> s = other;
-  swap(s);
+  Stack<T, M> temp = other;
+  swap(temp);
   return *this;
 }
 // in my dynamic array, m_data is set to nullptr initially, is that correct?
 // consider provide the default dynamic buffer
 // make it dynamic
-// refactor dynamic array,
-// destructor should not throw
 STACK_TEMPLATE
 Stack<T, N>& Stack<T, N>::operator=(const Stack<T, N>& other) {
   if (&other == this) return *this;
-  Stack<T, N> s = other;
-  swap(s);
+  Stack<T, N> temp = other;
+  swap(temp);
   return *this;
 }
 
@@ -102,16 +100,16 @@ Stack<T, N>::Stack(Stack<T, N>&& other) noexcept { move(std::move(other)); }
 
 STACK_TEMPLATE
 template <size_t M> Stack<T, N>& Stack<T, N>::operator=(Stack<T, M>&& other) noexcept {
-  Stack<T, M> s = std::move(other);
-  swap(s);
+  Stack<T, M> temp = std::move(other);
+  swap(temp);
   return *this;
 }
 
 STACK_TEMPLATE
 Stack<T, N>& Stack<T, N>::operator=(Stack<T, N>&& other) noexcept {
   if (&other == this) return *this;
-  Stack<T, N> s = std::move(other);
-  swap(s);
+  Stack<T, N> temp = std::move(other);
+  swap(temp);
   return *this;
 }
 
