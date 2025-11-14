@@ -10,16 +10,9 @@
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
-
 int main() {
-  array::DynamicArray<int> d1{1, 2, 3, 4, 5};
-  array::DynamicArray<int> d2 = d1;
-  d2[0] = 6;
-
-  array::DynamicArray<int> d3;
-  d3 = d2;
-
-  for (int n : d3) std::cout << n << '\n';
-
+  std::vector<int> v = {1, 2, 1, 3, 56, 7, 8, 9, 54, 1, 23, 5, 9, 54, 6, 12};
+  sort::selectionSort(v.begin(), v.end(), std::less{});
+  for (int n : v) std::cout << n << '\n';
   return 0;
 }
