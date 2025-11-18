@@ -39,10 +39,9 @@ public:
   ~Stack() noexcept;
 
   void push(const T& value);
+  void push(T&& value);
 
   template <typename... Args> T& emplace(Args&&... args);
-
-  void push(T&& value);
 
   T pop();
 

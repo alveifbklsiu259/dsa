@@ -60,9 +60,6 @@ template <size_t M> Stack<T, N>& Stack<T, N>::operator=(const Stack<T, M>& other
   swap(temp);
   return *this;
 }
-// in my dynamic array, m_data is set to nullptr initially, is that correct?
-// consider provide the default dynamic buffer
-// make it dynamic
 STACK_TEMPLATE
 Stack<T, N>& Stack<T, N>::operator=(const Stack<T, N>& other) {
   if (&other == this) return *this;
@@ -134,8 +131,7 @@ STACK_TEMPLATE template <typename... Args> T& Stack<T, N>::emplace(Args&&... arg
 STACK_TEMPLATE T Stack<T, N>::pop() {
   if (isEmpty()) throw std::underflow_error("Stack is empty");
   m_length--;
-  constexpr bool canSafelyMove =
-      std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
+  constexpr bool canSafelyMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
   T top = canSafelyMove ? std::move(*getBuffer(m_length)) : *getBuffer(m_length);
   getBuffer(m_length)->~T();
   return top;
