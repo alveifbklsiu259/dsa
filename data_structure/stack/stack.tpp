@@ -32,7 +32,8 @@ template <size_t M> void Stack<T, N>::copy(const Stack<T, M>& other) {
 }
 
 STACK_TEMPLATE
-template <size_t M> void Stack<T, N>::move(Stack<T, M>&& other) noexcept { // NOLINT
+template <size_t M>
+void Stack<T, N>::move(Stack<T, M>&& other) noexcept(std::is_nothrow_move_constructible_v<T>) { // NOLINT
   static_assert(M <= N, "Source stack too large for target stack");
   m_length = other.getSize();
   size_t i = 0;
@@ -90,20 +91,26 @@ STACK_TEMPLATE template <size_t M> void Stack<T, N>::swap(Stack<T, M>& other) no
 }
 
 STACK_TEMPLATE
-template <size_t M> Stack<T, N>::Stack(Stack<T, M>&& other) noexcept { move(std::move(other)); }
+template <size_t M>
+Stack<T, N>::Stack(Stack<T, M>&& other) noexcept(std::is_nothrow_move_constructible_v<T>) {
+  move(std::move(other));
+}
 
 STACK_TEMPLATE
-Stack<T, N>::Stack(Stack<T, N>&& other) noexcept { move(std::move(other)); }
+Stack<T, N>::Stack(Stack<T, N>&& other) noexcept(std::is_nothrow_move_constructible_v<T>) {
+  move(std::move(other));
+}
 
 STACK_TEMPLATE
-template <size_t M> Stack<T, N>& Stack<T, N>::operator=(Stack<T, M>&& other) noexcept {
+template <size_t M>
+Stack<T, N>& Stack<T, N>::operator=(Stack<T, M>&& other) noexcept(std::is_nothrow_move_constructible_v<T>) {
   Stack<T, M> temp = std::move(other);
   swap(temp);
   return *this;
 }
 
 STACK_TEMPLATE
-Stack<T, N>& Stack<T, N>::operator=(Stack<T, N>&& other) noexcept {
+Stack<T, N>& Stack<T, N>::operator=(Stack<T, N>&& other) noexcept(std::is_nothrow_move_constructible_v<T>) {
   if (&other == this) return *this;
   Stack<T, N> temp = std::move(other);
   swap(temp);

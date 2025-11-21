@@ -1,6 +1,8 @@
 #pragma once
 #include <algorithm>
+#include <cstdint>
 #include <iterator>
+#include <vector>
 
 namespace sort {
 

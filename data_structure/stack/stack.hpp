@@ -17,7 +17,7 @@ private:
 
   template <size_t M> void copy(const Stack<T, M>& other);
 
-  template <size_t M> void move(Stack<T, M>&& other) noexcept;
+  template <size_t M> void move(Stack<T, M>&& other) noexcept(std::is_nothrow_move_constructible_v<T>);
 
   template <size_t M> void swap(Stack<T, M>& other) noexcept;
 
@@ -30,11 +30,11 @@ public:
   template <size_t M> Stack& operator=(const Stack<T, M>& other);
   Stack& operator=(const Stack<T, N>& other);
 
-  template <size_t M> Stack(Stack<T, M>&& other) noexcept;
-  Stack(Stack<T, N>&& other) noexcept;
+  template <size_t M> Stack(Stack<T, M>&& other) noexcept(std::is_nothrow_move_constructible_v<T>);
+  Stack(Stack<T, N>&& other) noexcept(std::is_nothrow_move_constructible_v<T>);
 
-  template <size_t M> Stack& operator=(Stack<T, M>&& other) noexcept;
-  Stack& operator=(Stack<T, N>&& other) noexcept;
+  template <size_t M> Stack& operator=(Stack<T, M>&& other) noexcept(std::is_nothrow_move_constructible_v<T>);
+  Stack& operator=(Stack<T, N>&& other) noexcept(std::is_nothrow_move_constructible_v<T>);
 
   ~Stack() noexcept;
 
