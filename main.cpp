@@ -12,18 +12,14 @@
 #include <unordered_map>
 #include <unordered_set>
 int main() {
-  int ans[1] = {1};
-  std::vector<int> v;
-  queue::Queue<int, 5> q;
-  q.push(1);
-  q.push(2);
-  q.push(3);
-  q.push(4);
-  q.push(5);
-  std::cout << q.front() << '\n';
-  std::cout << q.pop() << '\n';
-  std::cout << q.pop() << '\n';
-  std::cout << q.pop() << '\n';
-  std::cout << q.pop() << '\n';
+  array::DynamicArray<int> v{1, 2, 3, 4, 5, 6, 7};
+
+  // v.erase(v.begin() + 2);
+  auto a = v.begin() + 1;
+  // auto b = v.cbegin() + 1;
+  // array::DynamicArray<int>::DynamicArrayIterator<true> c = v.begin();
+
+  // for (int n : v) std::cout << n << '\n';
+
   return 0;
 }

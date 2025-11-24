@@ -11,10 +11,10 @@ private:
   DoublyLinkNode<T>* tail = nullptr; // NOLINT
 
 public:
-  using iterator = BidirectionalIterator<DoublyLinkNode<T>>;
-  using constIterator = BidirectionalIterator<const DoublyLinkNode<T>>;
-  using reverseIterator = ReverseIterator<DoublyLinkNode<T>>;
-  using constReverseIterator = ReverseIterator<DoublyLinkNode<T>>;
+  using Iterator = BidirectionalIterator<DoublyLinkNode<T>>;
+  using ConstIterator = BidirectionalIterator<const DoublyLinkNode<T>>;
+  using ReverseIterator = linkedlist::ReverseIterator<DoublyLinkNode<T>>;
+  using ConstReverseIterator = linkedlist::ReverseIterator<DoublyLinkNode<T>>;
 
   void pushFront(const T& value) override {
     gsl::owner<DoublyLinkNode<T>*> newNode = new DoublyLinkNode<T>(value, this->head);
@@ -128,16 +128,16 @@ public:
     }
   }
 
-  iterator begin() noexcept { return iterator(this->head); }
-  constIterator begin() const noexcept { return constIterator(this->head); }
+  Iterator begin() noexcept { return Iterator(this->head); }
+  ConstIterator begin() const noexcept { return ConstIterator(this->head); }
 
-  iterator end() noexcept { return iterator(tail); }
-  constIterator end() const noexcept { return constIterator(tail); }
+  Iterator end() noexcept { return Iterator(tail); }
+  ConstIterator end() const noexcept { return ConstIterator(tail); }
 
-  reverseIterator rbegin() noexcept { return reverseIterator(tail); }
-  constReverseIterator rbegin() const noexcept { return constReverseIterator(tail); }
+  ReverseIterator rbegin() noexcept { return ReverseIterator(tail); }
+  ConstReverseIterator rbegin() const noexcept { return ConstReverseIterator(tail); }
 
-  reverseIterator rend() noexcept { return reverseIterator(nullptr); }
-  constReverseIterator rend() const noexcept { return constReverseIterator(nullptr); }
+  ReverseIterator rend() noexcept { return ReverseIterator(nullptr); }
+  ConstReverseIterator rend() const noexcept { return ConstReverseIterator(nullptr); }
 };
 } // namespace linkedlist

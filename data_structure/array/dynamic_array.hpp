@@ -12,11 +12,10 @@ private:
   size_t m_length;
   size_t m_capacity;
 
-  void assertBounds(int index) const {
+  void assertBounds(size_t index) const {
     if (index < 0 || index >= m_length)
       throw std::out_of_range(
-          "Index out of bounds, index: " + std::to_string(index) +
-          ", size: " + std::to_string(m_length)
+          "Index out of bounds, index: " + std::to_string(index) + ", size: " + std::to_string(m_length)
       );
   }
 
@@ -50,6 +49,77 @@ private:
   }
 
 public:
+  template <bool IsConst> class DynamicArrayIterator {
+  private:
+    template <bool> friend class DynamicArrayIterator;
+
+    using RawPtr = std::conditional_t<IsConst, const T*, T*>;
+    RawPtr m_ptr = nullptr;
+
+  public:
+    using value_type = T;
+    using reference = std::conditional_t<IsConst, const T&, T&>;
+    using pointer = RawPtr;
+    using difference_type = std::ptrdiff_t;
+    using iterator_category = std::random_access_iterator_tag;
+
+    explicit DynamicArrayIterator(T* p = nullptr) : m_ptr(p) {};
+
+    // Conversion constructor for mutable iterator to const iterator, not a copy constructor.
+    DynamicArrayIterator(const DynamicArrayIterator<false>& other)
+      requires IsConst
+        : m_ptr(other.m_ptr) {}
+
+    reference operator*() const { return *m_ptr; }
+    pointer operator->() const { return m_ptr; }
+
+    DynamicArrayIterator& operator++() {
+      m_ptr++;
+      return *this;
+    }
+
+    DynamicArrayIterator operator++(int) {
+      DynamicArrayIterator snapshot = *this;
+      m_ptr++;
+      return snapshot;
+    }
+
+    DynamicArrayIterator& operator--() {
+      m_ptr--;
+      return *this;
+    }
+
+    DynamicArrayIterator operator--(int) {
+      DynamicArrayIterator snapshot = *this;
+      m_ptr--;
+      return snapshot;
+    }
+
+    DynamicArrayIterator& operator+=(difference_type n) {
+      m_ptr += n;
+      return *this;
+    }
+
+    DynamicArrayIterator& operator-=(difference_type n) {
+      m_ptr -= n;
+      return *this;
+    }
+
+    DynamicArrayIterator operator+(difference_type n) const { return DynamicArrayIterator(m_ptr + n); }
+    DynamicArrayIterator operator-(difference_type n) const { return DynamicArrayIterator(m_ptr - n); }
+    difference_type operator-(const DynamicArrayIterator& other) const { return m_ptr - other.m_ptr; }
+
+    bool operator==(const DynamicArrayIterator& other) const { return m_ptr == other.m_ptr; }
+    bool operator!=(const DynamicArrayIterator& other) const { return m_ptr != other.m_ptr; }
+    bool operator>(const DynamicArrayIterator& other) const { return m_ptr > other.m_ptr; }
+    bool operator<(const DynamicArrayIterator& other) const { return m_ptr < other.m_ptr; }
+    bool operator>=(const DynamicArrayIterator& other) const { return m_ptr >= other.m_ptr; }
+    bool operator<=(const DynamicArrayIterator& other) const { return m_ptr <= other.m_ptr; }
+  };
+
+  using Iterator = DynamicArrayIterator<false>;
+  using ConstIterator = DynamicArrayIterator<true>;
+
   DynamicArray() : m_capacity(2), m_length(0), m_data(allocate(2)) {};
 
   DynamicArray(size_t size) : DynamicArray(size, T{}) {}
@@ -95,6 +165,38 @@ public:
   void clear() {
     for (int i = 0; i < m_length; i++) { m_data[i].~T(); }
     m_length = 0;
+  }
+
+  Iterator erase(ConstIterator pos) {
+    if (pos < begin() || pos >= end()) throw std::out_of_range("Erase position out of range");
+    size_t idx = static_cast<size_t>(pos - begin());
+    m_data[idx].~T();
+
+    for (size_t i = idx; i < m_length - 1; i++) {
+      new (m_data + i) T(std::move(m_data[i + 1]));
+      m_data[i + 1].~T();
+    }
+    m_length--;
+    return Iterator{m_data + idx};
+  }
+
+  Iterator erase(ConstIterator first, ConstIterator last) {
+    if (first < begin() || last > end() || last < first)
+      throw std::out_of_range("Erase positions out of range");
+
+    size_t start = static_cast<size_t>(first - begin());
+    size_t finish = static_cast<size_t>(last - begin());
+    size_t count = finish - start;
+
+    for (size_t i = start; i < finish; i++) m_data[i].~T();
+
+    for (size_t i = finish; i < m_length; i++) {
+      new (m_data + i - count) T(std::move(m_data[i]));
+      m_data[i].~T();
+    }
+
+    m_length -= count;
+    return Iterator{m_data + start};
   }
 
   void pushBack(const T& value) {
@@ -160,10 +262,12 @@ public:
     return m_data[index];
   }
 
-  T* begin() noexcept { return m_data; }
-  T* end() noexcept { return m_data + m_length; }
+  Iterator begin() noexcept { return Iterator{m_data}; }
+  Iterator end() noexcept { return Iterator{m_data + m_length}; }
 
-  const T* begin() const noexcept { return m_data; }
-  const T* end() const noexcept { return m_data + m_length; }
+  ConstIterator begin() const noexcept { return ConstIterator{m_data}; }
+  ConstIterator end() const noexcept { return ConstIterator{m_data + m_length}; }
+  ConstIterator cbegin() const noexcept { return ConstIterator{m_data}; }
+  ConstIterator cend() const noexcept { return ConstIterator{m_data + m_length}; }
 };
 } // namespace array

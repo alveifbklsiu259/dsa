@@ -31,11 +31,7 @@ public:
   [[nodiscard]] const V& getValue() const noexcept { return m_value; }
 };
 
-template <
-    typename K,
-    typename V,
-    typename Hasher = std::hash<K>,
-    typename KeyEqual = std::equal_to<K>>
+template <typename K, typename V, typename Hasher = std::hash<K>, typename KeyEqual = std::equal_to<K>>
   requires std::predicate<KeyEqual, const K&, const K&> && std::invocable<Hasher, const K&> &&
            std::convertible_to<std::invoke_result_t<Hasher, const K&>, size_t>
 class HashMap {
@@ -53,8 +49,8 @@ private:
   private:
     using MapType = std::conditional_t<IsConst, const HashMap<K, V, Hasher>, HashMap<K, V, Hasher>>;
 
-    using BucketIterator = std::
-        conditional_t<IsConst, typename BucketList::ConstIterator, typename BucketList::Iterator>;
+    using BucketIterator =
+        std::conditional_t<IsConst, typename BucketList::ConstIterator, typename BucketList::Iterator>;
 
     MapType* m_map = nullptr;
     size_t m_bucketIdx;
@@ -134,9 +130,7 @@ private:
     m_table = std::move(newTable);
   }
 
-  size_t getIndex(const K& key) const noexcept {
-    return spreadHash(key) & (m_table.getCapacity() - 1);
-  }
+  size_t getIndex(const K& key) const noexcept { return spreadHash(key) & (m_table.getCapacity() - 1); }
   [[nodiscard]] size_t getCapacity() const noexcept { return m_table.getCapacity(); }
 
   [[noreturn]] void throwKeyNotFound(const K& key) const {
@@ -190,9 +184,7 @@ public:
   template <typename Pair>
     requires std::constructible_from<HashMapKeyVal<K, V>, Pair&&>
   std::pair<Iterator, bool> insert(Pair&& kv) {
-    if (m_length >= m_table.getCapacity() * HashMap::maxLoadFactor) {
-      rehash(m_table.getCapacity() * 2);
-    }
+    if (m_length >= m_table.getCapacity() * HashMap::maxLoadFactor) { rehash(m_table.getCapacity() * 2); }
     Iterator it = find(kv.first);
     if (it != end()) return {it, false};
     BucketList& list = getList(kv.first);
@@ -210,9 +202,7 @@ public:
   }
 
   template <typename... Args> std::pair<Iterator, bool> emplace(const K& key, Args&&... args) {
-    if (m_length >= m_table.getCapacity() * HashMap::maxLoadFactor) {
-      rehash(m_table.getCapacity() * 2);
-    }
+    if (m_length >= m_table.getCapacity() * HashMap::maxLoadFactor) { rehash(m_table.getCapacity() * 2); }
     Iterator it = find(key);
     if (it != end()) return {it, false};
     BucketList& list = getList(key);
@@ -261,9 +251,7 @@ public:
     return end();
   }
 
-  Iterator end() noexcept {
-    return Iterator(this, m_table.getCapacity(), typename BucketList::Iterator());
-  }
+  Iterator end() noexcept { return Iterator(this, m_table.getCapacity(), typename BucketList::Iterator()); }
   ConstIterator end() const noexcept {
     return ConstIterator(this, m_table.getCapacity(), typename BucketList::ConstIterator());
   }
