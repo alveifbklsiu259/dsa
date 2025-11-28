@@ -1,6 +1,5 @@
 #pragma once
 #include <algorithm>
-#include <iostream>
 #include <new>
 #include <stdexcept>
 #include <type_traits>
@@ -31,7 +30,7 @@ private:
     m_length = other.m_length;
     m_capacity = other.m_capacity;
     m_data = allocate(m_capacity);
-    for (int i = 0; i < m_length; i++) new (m_data + i) T(other.m_data[i]);
+    for (size_t i = 0; i < m_length; i++) new (m_data + i) T(other.m_data[i]);
   }
 
   void move(DynamicArray<T>&& other) noexcept { // NOLINT
@@ -50,9 +49,9 @@ private:
 
 public:
   template <bool IsConst> class DynamicArrayIterator {
-  private:
     template <bool> friend class DynamicArrayIterator;
 
+  private:
     using RawPtr = std::conditional_t<IsConst, const T*, T*>;
     RawPtr m_ptr = nullptr;
 
@@ -63,7 +62,7 @@ public:
     using difference_type = std::ptrdiff_t;
     using iterator_category = std::random_access_iterator_tag;
 
-    explicit DynamicArrayIterator(T* p = nullptr) : m_ptr(p) {};
+    explicit DynamicArrayIterator(pointer p = nullptr) : m_ptr(p) {};
 
     // Conversion constructor for mutable iterator to const iterator, not a copy constructor.
     DynamicArrayIterator(const DynamicArrayIterator<false>& other)
@@ -132,7 +131,7 @@ public:
 
   DynamicArray(std::initializer_list<T> init)
       : m_capacity(init.size()), m_length(init.size()), m_data(allocate(init.size())) {
-    int i = 0;
+    size_t i = 0;
     for (const T& element : init) {
       new (m_data + i) T(element);
       i++;
@@ -163,35 +162,30 @@ public:
   [[nodiscard]] size_t getCapacity() const noexcept { return m_capacity; };
 
   void clear() {
-    for (int i = 0; i < m_length; i++) { m_data[i].~T(); }
+    for (size_t i = 0; i < m_length; i++) { m_data[i].~T(); }
     m_length = 0;
   }
 
-  Iterator erase(ConstIterator pos) {
-    if (pos < begin() || pos >= end()) throw std::out_of_range("Erase position out of range");
-    size_t idx = static_cast<size_t>(pos - begin());
-    m_data[idx].~T();
-
-    for (size_t i = idx; i < m_length - 1; i++) {
-      new (m_data + i) T(std::move(m_data[i + 1]));
-      m_data[i + 1].~T();
-    }
-    m_length--;
-    return Iterator{m_data + idx};
-  }
+  Iterator erase(ConstIterator pos) { return erase(pos, pos + 1); }
 
   Iterator erase(ConstIterator first, ConstIterator last) {
-    if (first < begin() || last > end() || last < first)
+    if (first < cbegin() || last > cend() || last < first)
       throw std::out_of_range("Erase positions out of range");
 
-    size_t start = static_cast<size_t>(first - begin());
-    size_t finish = static_cast<size_t>(last - begin());
+    size_t start = static_cast<size_t>(first - cbegin());
+    size_t finish = static_cast<size_t>(last - cbegin());
     size_t count = finish - start;
 
     for (size_t i = start; i < finish; i++) m_data[i].~T();
 
+    constexpr bool preferMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
+
     for (size_t i = finish; i < m_length; i++) {
-      new (m_data + i - count) T(std::move(m_data[i]));
+      if constexpr (preferMove) {
+        new (m_data + i - count) T(std::move(m_data[i]));
+      } else {
+        new (m_data + i - count) T(m_data[i]);
+      }
       m_data[i].~T();
     }
 
@@ -199,14 +193,40 @@ public:
     return Iterator{m_data + start};
   }
 
+  template <typename... Args> Iterator emplace(ConstIterator pos, Args&&... args) {
+    if (pos < cbegin() || pos > cend()) throw std::out_of_range("Emplace Position out of range");
+
+    if (m_length == m_capacity) reserve(m_capacity == 0 ? 2 : m_capacity * 2);
+    size_t idx = static_cast<size_t>(pos - cbegin());
+
+    constexpr bool preferMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
+
+    for (size_t i = m_length; i > idx; i--) {
+      if constexpr (preferMove) {
+        new (m_data + i) T(std::move(m_data[i - 1]));
+      } else {
+        new (m_data + i) T(m_data[i - 1]);
+      }
+      m_data[i - 1].~T();
+    }
+
+    new (m_data + idx) T(std::forward<Args>(args)...);
+    m_length++;
+    return Iterator{m_data + idx};
+  }
+
+  template <typename... Args> T& emplaceBack(Args&&... args) {
+    return *emplace(cend(), std::forward<Args>(args)...);
+  }
+
   void pushBack(const T& value) {
-    if (m_length == m_capacity) reserve(m_capacity * 2);
+    if (m_length == m_capacity) reserve(m_capacity == 0 ? 2 : m_capacity * 2);
     new (m_data + m_length) T(value);
     m_length++;
   }
 
   void pushBack(T&& value) {
-    if (m_length == m_capacity) reserve(m_capacity * 2);
+    if (m_length == m_capacity) reserve(m_capacity == 0 ? 2 : m_capacity * 2);
     new (m_data + m_length) T(std::move(value));
     m_length++;
   }
@@ -227,13 +247,10 @@ public:
     T* newData = allocate(newCapacity);
 
     try {
-      constexpr bool canSafelyMove =
-          std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
-
-      std::cout << (canSafelyMove ? "reserve by moving" : "reserve by copying") << '\n';
+      constexpr bool preferMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
 
       while (i < m_length) {
-        if constexpr (canSafelyMove) {
+        if constexpr (preferMove) {
           new (newData + i) T(std::move(m_data[i]));
         } else {
           new (newData + i) T(m_data[i]);
@@ -252,12 +269,12 @@ public:
     m_capacity = newCapacity;
   }
 
-  const T& operator[](int index) const {
+  const T& operator[](size_t index) const {
     assertBounds(index);
     return m_data[index];
   }
 
-  T& operator[](int index) {
+  T& operator[](size_t index) {
     assertBounds(index);
     return m_data[index];
   }

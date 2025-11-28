@@ -8,16 +8,19 @@ private:
   array::DynamicArray<T> m_data;
 
 public:
-  DynamicStack() = default;
-  ~DynamicStack() = default;
-
+  template <typename... Args> T& emplace(Args&&... args);
   void push(const T& val);
   void push(T&& val);
 
-  T pop();
+  void pop();
 
   const T& top() const;
+
+  void clear();
+
+  [[nodiscard]] bool isEmpty() const noexcept;
+  [[nodiscard]] size_t getSize() const noexcept;
 };
 } // namespace stack
 
-#include "./dynamic_stack.hpp"
+#include "./dynamic_stack.tpp"
