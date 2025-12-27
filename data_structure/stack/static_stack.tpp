@@ -123,21 +123,14 @@ StaticStack<T, N>::operator=(StaticStack<T, N>&& other) noexcept(std::is_nothrow
 
 STACK_TEMPLATE StaticStack<T, N>::~StaticStack() noexcept { clear(); }
 
-STACK_TEMPLATE void StaticStack<T, N>::push(const T& value) {
-  if (isFull()) throw std::overflow_error("Stack is full");
-  new (getBuffer(m_length++)) T(value);
-}
-
-STACK_TEMPLATE void StaticStack<T, N>::push(T&& value) {
-  if (isFull()) throw std::overflow_error("Stack is full");
-  new (getBuffer(m_length++)) T(std::move(value));
-}
-
 STACK_TEMPLATE template <typename... Args> T& StaticStack<T, N>::emplace(Args&&... args) {
   if (isFull()) throw std::overflow_error("Stack is full");
   T* newDataPtr = new (getBuffer(m_length++)) T(std::forward<Args>(args)...); // NOLINT
   return *newDataPtr;
 }
+
+STACK_TEMPLATE void StaticStack<T, N>::push(const T& value) { emplace(value); }
+STACK_TEMPLATE void StaticStack<T, N>::push(T&& value) { emplace(std::move(value)); }
 
 STACK_TEMPLATE T StaticStack<T, N>::pop() {
   if (isEmpty()) throw std::underflow_error("Stack is empty");

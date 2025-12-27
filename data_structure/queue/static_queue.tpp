@@ -101,20 +101,6 @@ StaticQueue<T, N>::operator=(StaticQueue<T, M>&& other) noexcept(std::is_nothrow
 
 QUEUE_TEMPLATE StaticQueue<T, N>::~StaticQueue() noexcept { clear(); }
 
-QUEUE_TEMPLATE void StaticQueue<T, N>::push(const T& val) {
-  if (isFull()) throw std::overflow_error("Queue is full");
-  std::construct_at(getBuffer(m_tail), val);
-  m_length++;
-  m_tail = (m_tail + 1) % m_capacity;
-}
-
-QUEUE_TEMPLATE void StaticQueue<T, N>::push(T&& val) {
-  if (isFull()) throw std::overflow_error("Queue is full");
-  std::construct_at(getBuffer(m_tail), std::move(val));
-  m_length++;
-  m_tail = (m_tail + 1) % m_capacity;
-}
-
 QUEUE_TEMPLATE template <typename... Args> T& StaticQueue<T, N>::emplace(Args&&... args) {
   if (isFull()) throw std::overflow_error("Queue is full");
   T* newDataPtr = std::construct_at(getBuffer(m_tail), std::forward<Args>(args)...); // NOLINT
@@ -122,6 +108,9 @@ QUEUE_TEMPLATE template <typename... Args> T& StaticQueue<T, N>::emplace(Args&&.
   m_length++;
   return *newDataPtr;
 }
+
+QUEUE_TEMPLATE void StaticQueue<T, N>::push(const T& val) { emplace(val); }
+QUEUE_TEMPLATE void StaticQueue<T, N>::push(T&& val) { emplace(std::move(val)); }
 
 QUEUE_TEMPLATE T StaticQueue<T, N>::pop() {
   if (isEmpty()) throw std::underflow_error("Queue is empty");

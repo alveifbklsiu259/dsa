@@ -8,11 +8,10 @@ template <typename T, size_t N> class StaticArray {
 private:
   T m_data[N]; // NOLINT
 
-  [[noreturn]] void assertBounds(int index) const {
-    if (index < 0 || index >= N)
+  [[noreturn]] void checkBound(size_t index) const {
+    if (index >= N)
       throw std::out_of_range(
-          "Index out of bounds, index: " + std::to_string(index) +
-          ", capacity: " + std::to_string(N)
+          "Index out of bounds, index: " + std::to_string(index) + ", capacity: " + std::to_string(N)
       );
   }
 
@@ -29,30 +28,28 @@ public:
   }
 
   T& at(int index) {
-    assertBounds(index);
+    checkBound(index);
     return m_data[index];
   }
 
   const T& at(int index) const {
-    assertBounds(index);
+    checkBound(index);
     return m_data[index];
   }
 
   void set(int index, T value) {
-    assertBounds(index);
+    checkBound(index);
     m_data[index] = value;
   }
 
   [[nodiscard]] size_t size() const { return N; };
 
   const T& operator[](int index) const {
-    assertBounds(index);
+    checkBound(index);
     return m_data[index];
   }
 
-  T& operator[](int index) {
-    return const_cast<T&>(static_cast<const StaticArray<T, N>&>(*this)[index]);
-  }
+  T& operator[](int index) { return const_cast<T&>(static_cast<const StaticArray<T, N>&>(*this)[index]); }
 
   T* begin() noexcept { return m_data; }
   T* end() noexcept { return m_data + N; }

@@ -39,27 +39,8 @@ DYNAMIC_QUEUE_TEMPLATE template <typename... Args> T& DynamicQueue<T>::emplace(A
   return m_data[oldTail];
 }
 
-DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::push(const T& val) {
-  if (isFull()) resize();
-  if (m_tail < m_head) {
-    m_data[m_tail] = val;
-  } else {
-    m_data.pushBack(val);
-  }
-  m_length++;
-  m_tail = (m_tail + 1) % m_data.getCapacity();
-}
-
-DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::push(T&& val) {
-  if (isFull()) resize();
-  if (m_tail < m_head) {
-    m_data[m_tail] = std::move(val);
-  } else {
-    m_data.pushBack(std::move(val));
-  }
-  m_length++;
-  m_tail = (m_tail + 1) % m_data.getCapacity();
-}
+DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::push(const T& val) { emplace(val); }
+DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::push(T&& val) { emplace(std::move(val)); }
 
 DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::pop() {
   if (isEmpty()) throw std::underflow_error("Queue is empty");

@@ -11,14 +11,14 @@ private:
   size_t m_length;
   size_t m_capacity;
 
-  void assertBounds(size_t index) const {
-    if (index < 0 || index >= m_length)
+  void checkBound(size_t index) const {
+    if (index >= m_length)
       throw std::out_of_range(
           "Index out of bounds, index: " + std::to_string(index) + ", size: " + std::to_string(m_length)
       );
   }
 
-  void release() {
+  void release() noexcept {
     clear();
     ::operator delete(m_data, std::align_val_t{alignof(T)});
     m_data = nullptr;
@@ -49,6 +49,7 @@ private:
 
 public:
   template <bool IsConst> class DynamicArrayIterator {
+    // Each instantiation of a class template is a distinct type
     template <bool> friend class DynamicArrayIterator;
 
   private:
@@ -160,8 +161,9 @@ public:
 
   [[nodiscard]] size_t getSize() const noexcept { return m_length; };
   [[nodiscard]] size_t getCapacity() const noexcept { return m_capacity; };
+  [[nodiscard]] bool empty() noexcept { return m_length == 0; }
 
-  void clear() {
+  void clear() noexcept {
     for (size_t i = 0; i < m_length; i++) { m_data[i].~T(); }
     m_length = 0;
   }
@@ -219,17 +221,8 @@ public:
     return *emplace(cend(), std::forward<Args>(args)...);
   }
 
-  void pushBack(const T& value) {
-    if (m_length == m_capacity) reserve(m_capacity == 0 ? 2 : m_capacity * 2);
-    new (m_data + m_length) T(value);
-    m_length++;
-  }
-
-  void pushBack(T&& value) {
-    if (m_length == m_capacity) reserve(m_capacity == 0 ? 2 : m_capacity * 2);
-    new (m_data + m_length) T(std::move(value));
-    m_length++;
-  }
+  void pushBack(const T& value) { emplaceBack(value); }
+  void pushBack(T&& value) { emplaceBack(std::move(value)); }
 
   void resize(size_t newSize) {
     if (newSize > m_length) {
@@ -263,19 +256,19 @@ public:
       throw;
     }
 
-    for (size_t i = 0; i < m_length; i++) { m_data[i].~T(); }
+    for (size_t i = 0; i < m_length; i++) m_data[i].~T();
     ::operator delete(m_data, std::align_val_t{alignof(T)});
     m_data = newData;
     m_capacity = newCapacity;
   }
 
   const T& operator[](size_t index) const {
-    assertBounds(index);
+    checkBound(index);
     return m_data[index];
   }
 
   T& operator[](size_t index) {
-    assertBounds(index);
+    checkBound(index);
     return m_data[index];
   }
 
