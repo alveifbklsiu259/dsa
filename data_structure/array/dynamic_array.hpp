@@ -63,6 +63,13 @@ public:
     using difference_type = std::ptrdiff_t;
     using iterator_category = std::random_access_iterator_tag;
 
+    DynamicArrayIterator() = default;
+    DynamicArrayIterator(const DynamicArrayIterator&) = default;
+    DynamicArrayIterator(DynamicArrayIterator&&) = default;
+    DynamicArrayIterator& operator=(const DynamicArrayIterator&) = default;
+    DynamicArrayIterator& operator=(DynamicArrayIterator&&) = default;
+    ~DynamicArrayIterator() = default;
+
     explicit DynamicArrayIterator(pointer p = nullptr) : m_ptr(p) {};
 
     // Conversion constructor for mutable iterator to const iterator, not a copy constructor.
@@ -72,6 +79,8 @@ public:
 
     reference operator*() const { return *m_ptr; }
     pointer operator->() const { return m_ptr; }
+
+    reference operator[](difference_type n) const { return *(m_ptr + n); }
 
     DynamicArrayIterator& operator++() {
       m_ptr++;
@@ -119,6 +128,8 @@ public:
 
   using Iterator = DynamicArrayIterator<false>;
   using ConstIterator = DynamicArrayIterator<true>;
+  using ReverseIterator = std::reverse_iterator<Iterator>;
+  using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
 
   DynamicArray() : m_capacity(2), m_length(0), m_data(allocate(2)) {};
 
@@ -161,7 +172,7 @@ public:
 
   [[nodiscard]] size_t getSize() const noexcept { return m_length; };
   [[nodiscard]] size_t getCapacity() const noexcept { return m_capacity; };
-  [[nodiscard]] bool empty() noexcept { return m_length == 0; }
+  [[nodiscard]] bool empty() const noexcept { return m_length == 0; }
 
   void clear() noexcept {
     for (size_t i = 0; i < m_length; i++) { m_data[i].~T(); }
@@ -273,11 +284,19 @@ public:
   }
 
   Iterator begin() noexcept { return Iterator{m_data}; }
-  Iterator end() noexcept { return Iterator{m_data + m_length}; }
-
   ConstIterator begin() const noexcept { return ConstIterator{m_data}; }
-  ConstIterator end() const noexcept { return ConstIterator{m_data + m_length}; }
   ConstIterator cbegin() const noexcept { return ConstIterator{m_data}; }
+
+  Iterator end() noexcept { return Iterator{m_data + m_length}; }
+  ConstIterator end() const noexcept { return ConstIterator{m_data + m_length}; }
   ConstIterator cend() const noexcept { return ConstIterator{m_data + m_length}; }
+
+  ReverseIterator rbegin() noexcept { return ReverseIterator{end()}; }
+  ConstReverseIterator rbegin() const noexcept { return ConstReverseIterator{end()}; }
+  ConstReverseIterator crbegin() const noexcept { return ConstReverseIterator{end()}; }
+
+  ReverseIterator rend() noexcept { return ReverseIterator{begin()}; }
+  ConstReverseIterator rend() const noexcept { return ConstReverseIterator{begin()}; }
+  ConstReverseIterator crend() const noexcept { return ConstReverseIterator{begin()}; }
 };
 } // namespace array

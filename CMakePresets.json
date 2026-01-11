@@ -2,18 +2,38 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "default",
+      "name": "base",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "inherits": ["base"],
+      "binaryDir": "${sourceDir}/build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": ["base"],
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
       }
     }
   ],
   "buildPresets": [
     {
-      "name": "default",
-      "configurePreset": "default",
+      "name": "debug",
+      "configurePreset": "debug",
+      "targets": ["all"]
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
       "targets": ["all"]
     }
   ]

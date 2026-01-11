@@ -4,6 +4,11 @@
 #include <cstddef>
 #include <gsl/gsl>
 #include <iostream>
+#include <iterator>
+
+#ifndef NDEBUG
+constexpr int debugValue = 9999;
+#endif
 
 namespace queue {
 
@@ -12,7 +17,7 @@ private:
   class Block {
   public:
     static const size_t blockSize = 32;
-    T* slot(size_t i) noexcept { return reinterpret_cast<T*>(m_block.data()) + i; }
+    T* slot(size_t i) noexcept { return reinterpret_cast<T*>(m_block.data()) + i; } // NOLINT
     const T* slot(size_t i) const noexcept { return reinterpret_cast<const T*>(m_block.data()) + i; }
 
     Block() = default;
@@ -20,7 +25,7 @@ private:
     Block& operator=(const Block&) = delete;
     Block(Block&&) = delete;
     Block& operator=(Block&&) = delete;
-    ~Block() = delete;
+    ~Block() = default;
 
   private:
     alignas(T) std::array<std::byte, sizeof(T) * blockSize> m_block;
@@ -61,10 +66,12 @@ private:
       return m_elementHeadLocal + (m_blockHead * getElementsPerBlock());
     }
 
+    // elementTail points to the slot one position to the right of the actual tail element.
     [[nodiscard]] size_t getElementTailGlobal() const noexcept {
       return (getElementHeadGlobal() + getElementSize()) % getElementCapacity();
     }
 
+    // the index of the actual tail element
     [[nodiscard]] size_t getTailElementGlobalIndex() const noexcept {
       size_t elementCapacity = getElementCapacity();
       return (getElementTailGlobal() - 1 + elementCapacity) % elementCapacity;
@@ -73,6 +80,16 @@ private:
     [[nodiscard]] size_t getElementCapacity() const noexcept {
       return getBlockCapacity() * getElementsPerBlock();
     }
+
+    size_t wrapOffset(int target, int n) noexcept {
+      int next = (target + n) % getElementsPerBlock();
+      if (next < 0) next += getElementsPerBlock();
+      return static_cast<size_t>(next);
+    }
+
+    void updateElementTailBy(int n) noexcept { m_elementTailLocal = wrapOffset(m_elementTailLocal, n); }
+
+    void updateElementHeadBy(int n) noexcept { m_elementHeadLocal = wrapOffset(m_elementHeadLocal, n); }
 
     void reallocateMap(size_t newSize) {
       if (newSize <= getBlockCapacity()) return;
@@ -102,13 +119,6 @@ private:
       }
     }
 
-    [[nodiscard]] bool isBlocksFull() const noexcept { return m_blockSize == getBlockCapacity(); }
-    [[nodiscard]] bool noFreeSlotLeft() const noexcept { return m_elementHeadLocal == 0; }
-    [[nodiscard]] bool noFreeSlotRight() const noexcept { return m_elementTailLocal == 0; }
-
-    [[nodiscard]] bool canConstructAtHead() const noexcept { return !isBlocksFull() || !noFreeSlotLeft(); }
-    [[nodiscard]] bool canConstructAtTail() const noexcept { return !isBlocksFull() || !noFreeSlotRight(); }
-
     bool ensureNextBlockAllocated() {
       if (noFreeSlotRight()) {
         constructBlock(getBlockTail());
@@ -134,29 +144,49 @@ private:
       return false;
     }
 
-    Block* allocateBlock() {
+    gsl::owner<Block*> allocateBlock() {
       Block* block = new Block(); // NOLINT
-      // delete this line, it is for testing
-      for (size_t i = 0; i < getElementsPerBlock(); i++) { new (block->slot(i)) int(9999); }
+#ifndef NDEBUG
+      for (size_t i = 0; i < getElementsPerBlock(); i++) { new (block->slot(i)) int(debugValue); }
+#endif
       return block;
     }
 
-    // Block* allocateBlock() {
-    //   // almost the same as returning new Block(); since Block is trivially-constructible
-    //   return new Block(); // NOLINT
-    //   // std::array is not trivially-constructible
-    //   // Block* block = static_cast<Block*>(::operator new(sizeof(Block)));
-    //   // return block;
-    // }
+    void deallocateBlock(gsl::owner<Block*> block) noexcept { delete block; }
 
-    void deallocateBlock(Block* block) noexcept { ::operator delete(block); }
+    void deallocateBlocksFromHead(size_t newBlockHead) noexcept {
+      while (m_blockHead != newBlockHead) {
+        deallocateBlock(m_blocks[m_blockHead]); // NOLINT
+        m_blocks[m_blockHead] = nullptr;
+        m_blockHead = (m_blockHead + 1) % getBlockCapacity();
+        m_blockSize--;
+      }
+    }
+
+    void deallocateBlocksFromTail(size_t newTailAllocatedBlock) noexcept {
+      size_t tailAllocatedBlock = (getBlockTail() + getBlockCapacity() - 1) % getBlockCapacity();
+
+      while (tailAllocatedBlock != newTailAllocatedBlock) {
+        deallocateBlock(m_blocks[tailAllocatedBlock]); // NOLINT
+        m_blocks[tailAllocatedBlock] = nullptr;
+        tailAllocatedBlock = (tailAllocatedBlock - 1) % getBlockCapacity();
+        m_blockSize--;
+      }
+    }
 
     void constructBlock(size_t blockIndex) {
       if (m_blocks[blockIndex] == nullptr) {
-        m_blocks[blockIndex] = allocateBlock();
+        m_blocks[blockIndex] = allocateBlock(); // NOLINT
         m_blockSize++;
       }
     }
+
+    [[nodiscard]] bool isBlocksFull() const noexcept { return m_blockSize == getBlockCapacity(); }
+    [[nodiscard]] bool noFreeSlotLeft() const noexcept { return m_elementHeadLocal == 0; }
+    [[nodiscard]] bool noFreeSlotRight() const noexcept { return m_elementTailLocal == 0; }
+
+    [[nodiscard]] bool canConstructAtHead() const noexcept { return !isBlocksFull() || !noFreeSlotLeft(); }
+    [[nodiscard]] bool canConstructAtTail() const noexcept { return !isBlocksFull() || !noFreeSlotRight(); }
 
     void deepCopy(const IndexMap& other) {
       reallocateMap(other.getBlockCapacity());
@@ -205,26 +235,21 @@ private:
     template <bool IsConst> class IndexMapIterator {
       template <bool> friend class IndexMapIterator;
       friend class IndexMap;
+      template <typename> friend class Deque;
 
     private:
       using RawPtr = std::conditional_t<IsConst, const T*, T*>;
-      IndexMap* m_map = nullptr;
+      using MapPtr = std::conditional_t<IsConst, const IndexMap*, IndexMap*>;
+      MapPtr m_map = nullptr;
       size_t m_offsetFromHead = 0;
 
-      [[nodiscard]] size_t getPosition() const noexcept {
-        return (m_map->getElementHeadGlobal() + m_offsetFromHead) % m_map->getElementCapacity();
-      }
-
       // should be able to be constructed by itself or friends (i.e. IndexMap)
-      IndexMapIterator(IndexMap* map, size_t offsetFromHead)
-          : m_map(map), m_offsetFromHead(offsetFromHead) {};
-
-      // conversion constructor Iterator -> ConstIterator
-      IndexMapIterator(const IndexMapIterator<false>& other)
-        requires IsConst
-          : m_map(other.m_map), m_offsetFromHead(other.m_offsetFromHead) {}
+      IndexMapIterator(MapPtr map, size_t offsetFromHead) : m_map(map), m_offsetFromHead(offsetFromHead) {};
 
     public:
+      [[nodiscard]] size_t getPosition(std::ptrdiff_t n = 0) const noexcept {
+        return (m_map->getElementHeadGlobal() + m_offsetFromHead + n) % m_map->getElementCapacity();
+      }
       using value_type = T;
       using reference = std::conditional_t<IsConst, const T&, T&>;
       using pointer = RawPtr;
@@ -232,8 +257,21 @@ private:
       using iterator_category = std::random_access_iterator_tag;
 
       IndexMapIterator() = default;
+      IndexMapIterator(const IndexMapIterator&) = default;
+      IndexMapIterator& operator=(const IndexMapIterator&) = default;
+      IndexMapIterator(IndexMapIterator&&) noexcept = default;
+      IndexMapIterator& operator=(IndexMapIterator&&) noexcept = default;
+      ~IndexMapIterator() noexcept = default;
+
+      // conversion constructor Iterator -> ConstIterator
+      IndexMapIterator(const IndexMapIterator<false>& other)
+        requires IsConst
+          : m_map(other.m_map), m_offsetFromHead(other.m_offsetFromHead) {}
+
       reference operator*() const { return *m_map->slotAt(getPosition()); }
       pointer operator->() const { return m_map->slotAt(getPosition()); }
+
+      reference operator[](difference_type n) const { return *m_map->slotAt(getPosition(n)); }
 
       IndexMapIterator& operator+=(difference_type n) {
         m_offsetFromHead += n;
@@ -279,6 +317,7 @@ private:
       IndexMapIterator operator-(difference_type n) const {
         return IndexMapIterator(m_map, m_offsetFromHead - n);
       }
+
       difference_type operator-(const IndexMapIterator& other) const {
         return m_offsetFromHead - other.m_offsetFromHead;
       }
@@ -286,6 +325,7 @@ private:
       auto operator<=>(const IndexMapIterator& other) const {
         return m_offsetFromHead <=> other.m_offsetFromHead;
       }
+
       bool operator==(const IndexMapIterator& other) const {
         return m_offsetFromHead == other.m_offsetFromHead;
       }
@@ -293,6 +333,8 @@ private:
 
     using Iterator = IndexMapIterator<false>;
     using ConstIterator = IndexMapIterator<true>;
+    using ReverseIterator = std::reverse_iterator<Iterator>;
+    using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
 
     IndexMap() = default;
 
@@ -341,7 +383,7 @@ private:
       T* ptr = nullptr;
       try {
         ptr = constructAt(getElementTailGlobal(), std::forward<Args>(args)...);
-        m_elementTailLocal = (m_elementTailLocal + 1) % getElementsPerBlock();
+        updateElementTailBy(1);
         m_elementSize++;
       } catch (...) { throw; }
       return ptr;
@@ -350,7 +392,7 @@ private:
     template <typename... Args> T* constructAtHead(Args&&... args) {
       ensureEnoughPrevBlocks();
       bool prevBlockAllocated = false;
-      size_t prevElemHead = m_elementHeadLocal;
+      size_t prevElementHead = m_elementHeadLocal;
       size_t prevBlockHead = m_blockHead;
       T* ptr = nullptr;
 
@@ -361,11 +403,11 @@ private:
       }
 
       try {
-        m_elementHeadLocal = (m_elementHeadLocal + getElementsPerBlock() - 1) % getElementsPerBlock();
+        updateElementHeadBy(-1);
         if (prevBlockAllocated) m_blockHead = (m_blockHead + getBlockCapacity() - 1) % getBlockCapacity();
         ptr = constructAt(getElementHeadGlobal(), std::forward<Args>(args)...);
       } catch (...) {
-        m_elementHeadLocal = prevElemHead;
+        m_elementHeadLocal = prevElementHead;
         m_blockHead = prevBlockHead;
         throw;
       }
@@ -375,8 +417,28 @@ private:
 
     void destroyAt(size_t pos) noexcept {
       slotAt(pos)->~T();
-      // delete this line, this is for testing
-      new (slotAt(pos)) int(9999);
+#ifndef NDEBUG
+      new (slotAt(pos)) int(debugValue);
+#endif
+    }
+
+    void destroyRange(ConstIterator first, size_t count) noexcept {
+      for (size_t i = 0; i < count; ++i) { destroyAt(first.getPosition(i)); }
+    }
+
+    void destroyAndShiftLeft(ConstIterator first, ConstIterator last) {
+      size_t count = last - first;
+      constexpr bool preferMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
+      size_t elementsToShift = getElementSize() - first.m_offsetFromHead - count;
+
+      for (size_t i = 0; i < elementsToShift; ++i) {
+        if constexpr (preferMove) {
+          *slotAt(first.getPosition(i)) = std::move(*slotAt(last.getPosition(i)));
+        } else {
+          *slotAt(first.getPosition(i)) = *slotAt(last.getPosition(i));
+        }
+      }
+      for (size_t i = elementsToShift; i < elementsToShift + count; ++i) { destroyAt(first.getPosition(i)); }
     }
 
     void destroyAtHead() {
@@ -385,7 +447,7 @@ private:
       bool blockToBeEmpty = m_elementHeadLocal == (getElementsPerBlock() - 1);
       if (blockToBeEmpty) {
         m_elementHeadLocal = 0;
-        deallocateBlock(m_blocks[m_blockHead]);
+        deallocateBlock(m_blocks[m_blockHead]); // NOLINT
         m_blocks[m_blockHead] = nullptr;
         m_blockHead = (m_blockHead + 1) % getBlockCapacity();
         m_blockSize--;
@@ -402,11 +464,11 @@ private:
 
       if (blockToBeEmpty) {
         auto [elementTailBlockIdx, _] = posToOffsets(getElementTailGlobal());
-        deallocateBlock(m_blocks[elementTailBlockIdx]);
+        deallocateBlock(m_blocks[elementTailBlockIdx]); // NOLINT
         m_blocks[elementTailBlockIdx] = nullptr;
         m_blockSize--;
       }
-      m_elementTailLocal = (m_elementTailLocal + getElementsPerBlock() - 1) % getElementsPerBlock();
+      updateElementTailBy(-1);
       m_elementSize--;
     }
 
@@ -440,7 +502,7 @@ private:
 
       for (size_t i = 0; i < blockCapacity; ++i) {
         if (m_blocks[i] != nullptr) {
-          deallocateBlock(m_blocks[i]);
+          deallocateBlock(m_blocks[i]); // NOLINT
           m_blocks[i] = nullptr;
         }
       }
@@ -450,6 +512,100 @@ private:
       m_elementHeadLocal = getElementsPerBlock() / 2;
       m_elementTailLocal = m_elementHeadLocal;
       m_elementSize = 0;
+    }
+
+    Iterator erase(ConstIterator pos) { return erase(pos, pos + 1); }
+
+    Iterator erase(ConstIterator first, ConstIterator last) {
+      if (first < cbegin() || last > cend() || first > last) {
+        throw std::out_of_range("Erase positions out of range");
+      }
+
+      size_t count = static_cast<size_t>(last - first);
+      if (count == 0) return Iterator{this, first.m_offsetFromHead};
+
+      if (first == cbegin()) {
+        destroyRange(first, count);
+        auto [newBlockHead, _] = posToOffsets(first.getPosition(count));
+        deallocateBlocksFromHead(newBlockHead);
+        updateElementHeadBy(count);
+      } else {
+        if (last == cend()) {
+          destroyRange(first, count);
+        } else {
+          destroyAndShiftLeft(first, last);
+        }
+
+        size_t elementCapacity = getElementCapacity();
+        auto [newTailAllocatedBlock, _] =
+            posToOffsets((getTailElementGlobalIndex() - count + elementCapacity) % elementCapacity);
+
+        deallocateBlocksFromTail(newTailAllocatedBlock);
+        updateElementTailBy(-static_cast<int>(count));
+      }
+
+      m_elementSize -= count;
+      return Iterator{this, first.m_offsetFromHead};
+    }
+
+    template <typename... Args> Iterator emplace(ConstIterator pos, Args&&... args) {
+      if (pos < cbegin() || pos > cend()) { throw std::out_of_range("Emplace position out of range"); }
+
+      if (pos == cbegin()) {
+        constructAtHead(std::forward<Args>(args)...);
+        return begin();
+      }
+
+      if (pos == cend()) {
+        constructAtTail(std::forward<Args>(args)...);
+        return Iterator{this, getElementSize() - 1};
+      }
+
+      // guaranteed to be > 0
+      size_t offset = pos.m_offsetFromHead;
+
+      constexpr bool preferMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
+
+      bool fewerElementsOnLeft = pos - cbegin() <= cend() - pos;
+      if (fewerElementsOnLeft) {
+        //  move left
+        ConstIterator first = cbegin();
+        T head = preferMove ? std::move(*first) : *first;
+
+        for (size_t i = 1; i < offset; ++i) {
+          if constexpr (preferMove) {
+            *slotAt(first.getPosition(i - 1)) = std::move(*slotAt(first.getPosition(i)));
+          } else {
+            *slotAt(first.getPosition(i - 1)) = *slotAt(first.getPosition(i));
+          }
+        }
+
+        size_t insertionPosition = first.getPosition(offset - 1);
+        destroyAt(insertionPosition);
+        constructAt(insertionPosition, std::forward<Args>(args)...);
+        constructAtHead(head);
+
+      } else {
+        // move right
+        size_t elementsToShift = getElementSize() - offset;
+
+        T tail = preferMove ? std::move(*slotAt(pos.getPosition(elementsToShift - 1)))
+                            : *slotAt(pos.getPosition(elementsToShift - 1));
+
+        for (size_t i = elementsToShift - 1; i > 0; --i) {
+          if constexpr (preferMove) {
+            *slotAt(pos.getPosition(i)) = std::move(*slotAt(pos.getPosition(i - 1)));
+          } else {
+            *slotAt(pos.getPosition(i)) = *slotAt(pos.getPosition(i - 1));
+          }
+        }
+
+        size_t insertionPosition = pos.getPosition();
+        destroyAt(insertionPosition);
+        constructAt(insertionPosition, std::forward<Args>(args)...);
+        constructAtTail(tail);
+      }
+      return Iterator{this, offset};
     }
 
     T& operator[](size_t index) {
@@ -468,87 +624,83 @@ private:
     const T& at(size_t index) const { return operator[](index); }
 
     Iterator begin() noexcept { return Iterator{this, 0}; }
-    ConstIterator begin() const noexcept { return Iterator{this, 0}; }
-    ConstIterator cbegin() const noexcept { return Iterator{this, 0}; }
+    ConstIterator begin() const noexcept { return ConstIterator{this, 0}; }
+    ConstIterator cbegin() const noexcept { return ConstIterator{this, 0}; }
 
     Iterator end() noexcept { return Iterator{this, getElementSize()}; }
-    ConstIterator end() const noexcept { return Iterator{this, getElementSize()}; }
-    ConstIterator cend() const noexcept { return Iterator{this, getElementSize()}; }
+    ConstIterator end() const noexcept { return ConstIterator{this, getElementSize()}; }
+    ConstIterator cend() const noexcept { return ConstIterator{this, getElementSize()}; }
 
-    void i_printBlocks() const noexcept {
-      for (size_t i = 0; i < getBlockCapacity(); i++) {
-        if (m_blocks[i] == nullptr)
-          std::cout << "-----" << ' ';
-        else {
-          if (i == m_blockHead) {
-            std::cout << "Block(*)" << ' ';
-          } else {
-            std::cout << "Block" << ' ';
+    ReverseIterator rbegin() noexcept { return ReverseIterator{end()}; }
+    ConstReverseIterator rbegin() const noexcept { return ConstReverseIterator{end()}; }
+    ConstReverseIterator crbegin() const noexcept { return ConstReverseIterator{end()}; }
+
+    ReverseIterator rend() noexcept { return ReverseIterator{begin()}; }
+    ConstReverseIterator rend() const noexcept { return ConstReverseIterator{begin()}; }
+    ConstReverseIterator crend() const noexcept { return ConstReverseIterator{begin()}; }
+
+#ifndef NDEBUG
+    static std::string colorize(const std::string& s, const char* colorCode) noexcept {
+      return std::string(colorCode) + s + "\033[0m";
+    }
+
+    std::string
+    formatBlock(const Block* block, size_t blockIdx, size_t elemIdx, size_t elemTailBlockIdx) const {
+      // Empty slot
+      if (block == nullptr) {
+        std::string s = padStart("*", 4, '*');
+        if (elemIdx == m_elementTailLocal && blockIdx == getBlockTail() && noFreeSlotRight()) {
+          return colorize(s, "\033[34m"); // blue
+        }
+        return s;
+      }
+
+      // Occupied slot
+      const T* slotData = block->slot(elemIdx);
+      if (*slotData == debugValue) {
+        std::string s = "--";
+        if (elemIdx == m_elementTailLocal && blockIdx == elemTailBlockIdx && !noFreeSlotRight()) {
+          if (elemIdx == m_elementHeadLocal) {
+            return colorize(padStart(s, 2, '-'), "\033[31m") + // red
+                   colorize(padStart(s, 2, '-'), "\033[34m");  // blue
           }
+          return colorize(padStart(s, 4, '-'), "\033[34m"); // tail -> blue
+        }
+        return padStart(s, 4, '-');
+      }
+
+      // Normal data slot
+      std::string s = std::to_string(*slotData);
+      size_t globalIdx = elemIdx + (blockIdx * getElementsPerBlock());
+      size_t headIdx = getElementHeadGlobal();
+      if (globalIdx == headIdx) {
+        return colorize(padStart(s, 4, '0'), "\033[31m"); // head -> red
+      }
+      return padStart(s, 4, '0');
+    }
+
+    void printBlocks() const noexcept {
+      for (size_t i = 0; i < getBlockCapacity(); i++) {
+        if (!m_blocks[i]) {
+          std::cout << "----- ";
+        } else {
+          std::cout << "Block" << (i == m_blockHead ? "(*)" : "") << ' ';
         }
       }
       std::cout << '\n';
     }
 
-    void i_printBlock(size_t i) const noexcept {
-      Block* block = m_blocks[i];
-      for (size_t i = 0; i < getElementsPerBlock(); i++) {
-        T* slotData = block->slot(i);
-        if (*slotData == 9999) {
-          std::string s = "--";
-          std::cout << i_padStart(s, 4, '-') << ' ';
-        } else {
-          std::string s = std::to_string(*slotData);
-          std::cout << (i_padStart(s, 4, '0')) << " ";
-        }
-        if ((i + 1) % 4 == 0) std::cout << '\n';
-      }
-    }
-
-    void i_printBlock(const std::vector<size_t>& indices) const noexcept {
-      size_t colsPerRow = 4;
+    void printBlock(const std::vector<size_t>& indices, size_t colsPerRow = 4) const noexcept {
       size_t rows = getElementsPerBlock() / colsPerRow;
+      size_t elemTailBlockIdx = (getBlockTail() - 1 + getBlockCapacity()) % getBlockCapacity();
+
       for (size_t r = 0; r < rows; ++r) {
         for (size_t i : indices) {
-          if (i > getBlockCapacity() - 1) continue;
+          if (i >= getBlockCapacity()) continue;
           Block* block = m_blocks[i];
-          size_t elemTailBlockIdx = (getBlockTail() - 1 + getBlockCapacity()) % getBlockCapacity();
           for (size_t c = 0; c < colsPerRow; ++c) {
             size_t elemIdx = c + (colsPerRow * r);
-            if (block == nullptr) {
-              std::string s = "*";
-              if (elemIdx == m_elementTailLocal && i == getBlockTail() && noFreeSlotRight()) {
-                // elemTail -> blue
-                std::cout << "\033[34m" << (i_padStart(s, 4, '*')) << "\033[0m" << ' ';
-              } else {
-                std::cout << i_padStart(s, 4, '*') << ' ';
-              }
-            } else {
-              T* slotData = block->slot(elemIdx);
-              if (*slotData == 9999) {
-                std::string s = "--";
-                if (elemIdx == m_elementTailLocal && i == elemTailBlockIdx && !noFreeSlotRight()) {
-                  if (elemIdx == m_elementHeadLocal) {
-                    std::cout << "\033[31m" << (i_padStart(s, 2, '-')) << "\033[0m" << "\033[34m"
-                              << (i_padStart(s, 2, '-')) << "\033[0m" << ' ';
-                  } else {
-                    // elemTail -> blue
-                    std::cout << "\033[34m" << (i_padStart(s, 4, '-')) << "\033[0m" << ' ';
-                  }
-                } else {
-                  std::cout << i_padStart(s, 4, '-') << ' ';
-                }
-              } else {
-                std::string s = std::to_string(*slotData);
-                if (elemIdx + (i * getElementsPerBlock()) ==
-                    m_elementHeadLocal + (m_blockHead * getElementsPerBlock())) {
-                  // elemHead -> red
-                  std::cout << "\033[31m" << (i_padStart(s, 4, '0')) << "\033[0m" << ' ';
-                } else {
-                  std::cout << (i_padStart(s, 4, '0')) << ' ';
-                }
-              }
-            }
+            std::cout << formatBlock(block, i, elemIdx, elemTailBlockIdx) << ' ';
             if (c == colsPerRow - 1) std::cout << " | ";
           }
         }
@@ -556,18 +708,28 @@ private:
       }
     }
 
-    void i_printInfo() const noexcept {
-      std::cout << "Head Index: " << m_blockHead << '\n';
-      std::cout << "Tail Index: " << (m_blockHead + m_blockSize) % getBlockCapacity() << '\n';
-      std::cout << "Block Size: " << m_blockSize << '\n';
-      std::cout << "Block Capacity: " << getBlockCapacity() << '\n';
-      std::cout << "Element Size: " << getElementSize() << '\n';
+    void printInfo() const noexcept {
+      std::cout << "Head Index: " << m_blockHead << '\n'
+                << "Tail Index: " << getBlockTail() << '\n'
+                << "Block Size: " << m_blockSize << '\n'
+                << "Block Capacity: " << getBlockCapacity() << '\n'
+                << "Element Size: " << getElementSize() << '\n';
     }
 
-    std::string i_padStart(const std::string& s, size_t length, char fill) const {
+    [[nodiscard]] std::string padStart(const std::string& s, std::size_t length, char fill) const {
       if (s.size() >= length) return s;
-      return std::string(length - s.size(), fill) + s;
+
+      const std::size_t padCount = length - s.size();
+
+      bool isNegativeInt = !s.empty() && s[0] == '-' && std::all_of(s.begin() + 1, s.end(), [](char ch) {
+        return std::isdigit(static_cast<unsigned char>(ch));
+      });
+
+      if (isNegativeInt && fill == '0') { return "-" + std::string(padCount, '0') + s.substr(1); }
+
+      return std::string(padCount, fill) + s;
     }
+#endif
 
     [[nodiscard]] bool isEmpty() const noexcept { return getElementSize() == 0; }
     [[nodiscard]] bool isFull() const noexcept {
@@ -590,18 +752,25 @@ public:
   using const_reference = const T&;
   using Iterator = IndexMap::template IndexMapIterator<false>;
   using ConstIterator = IndexMap::template IndexMapIterator<true>;
+  using ReverseIterator = IndexMap::ReverseIterator;
+  using ConstReverseIterator = IndexMap::ConstReverseIterator;
 
   Deque() = default;
-  // begin, end, cbein, cend, erase, insert, iterator
+  Deque(std::initializer_list<T> l) { insert(cbegin(), l); }
+
+  template <typename... Args> Iterator emplace(ConstIterator pos, Args&&... args) {
+    return m_indexMap.emplace(pos, std::forward<Args>(args)...);
+  }
+
   template <typename... Args> reference emplaceBack(Args&&... args) {
-    return *(m_indexMap.constructAtTail(std::forward<Args>(args)...));
+    return *m_indexMap.emplace(cend(), std::forward<Args>(args)...);
   }
 
   void pushBack(const T& val) { emplaceBack(val); }
   void pushBack(T&& val) { emplaceBack(std::move(val)); }
 
   template <typename... Args> reference emplaceFront(Args&&... args) {
-    return *(m_indexMap.constructAtHead(std::forward<Args>(args)...));
+    return *m_indexMap.emplace(cbegin(), std::forward<Args>(args)...);
   }
 
   void pushFront(const T& val) { emplaceFront(val); }
@@ -637,15 +806,48 @@ public:
     return m_indexMap.tail();
   }
 
+  Iterator erase(ConstIterator pos) { return m_indexMap.erase(pos); }
+  Iterator erase(ConstIterator first, ConstIterator last) { return m_indexMap.erase(first, last); }
+
+  Iterator insert(ConstIterator pos, const T& value) { return m_indexMap.emplace(pos, value); }
+  Iterator insert(ConstIterator pos, T&& value) { return m_indexMap.emplace(pos, std::move(value)); }
+  template <std::input_iterator InputIterator>
+  Iterator insert(ConstIterator pos, InputIterator first, InputIterator last) {
+    ConstIterator it = pos;
+
+    // if user passed in iterators of deque
+    if constexpr (requires(InputIterator it) { it.m_map; }) {
+      // if first and last are from the same deque as the current one
+      if (pos.m_map == first.m_map && pos.m_map == last.m_map) {
+        std::vector<value_type> copy{first, last};
+        for (value_type& v : copy) {
+          emplace(it, v);
+          it++;
+        }
+      }
+    } else {
+      for (; first != last; ++first) {
+        emplace(it, *first);
+        it++;
+      }
+    }
+    return Iterator(&this->m_indexMap, pos.m_offsetFromHead);
+  }
+
+  Iterator insert(ConstIterator pos, std::initializer_list<T> l) { return insert(pos, l.begin(), l.end()); }
+
+  void clear() noexcept { m_indexMap.clear(); }
+
   reference operator[](size_t index) { return m_indexMap.at(index); }
   const_reference operator[](size_t index) const { return m_indexMap.at(index); }
   reference at(size_t index) { return m_indexMap.at(index); }
   const_reference at(size_t index) const { return m_indexMap.at(index); }
 
-  void i_printBlocks() const noexcept { m_indexMap.i_printBlocks(); }
-  void i_printBlock(size_t i) const noexcept { m_indexMap.i_printBlock(i); }
-  void i_printBlock(const std::vector<size_t>& indices) const noexcept { m_indexMap.i_printBlock(indices); }
-  void i_printInfo() const noexcept { m_indexMap.i_printInfo(); }
+#ifndef NDEBUG
+  void printBlocks() const noexcept { m_indexMap.printBlocks(); }
+  void printBlock(const std::vector<size_t>& indices) const noexcept { m_indexMap.printBlock(indices); }
+  void printInfo() const noexcept { m_indexMap.printInfo(); }
+#endif
 
   [[nodiscard]] bool isEmpty() noexcept { return getSize() == 0; }
   [[nodiscard]] size_t getSize() noexcept { return m_indexMap.getElementSize(); }
@@ -657,5 +859,13 @@ public:
   Iterator end() noexcept { return m_indexMap.end(); }
   ConstIterator end() const noexcept { return m_indexMap.end(); }
   ConstIterator cend() const noexcept { return m_indexMap.cend(); }
+
+  ReverseIterator rbegin() noexcept { return m_indexMap.rbegin(); }
+  ConstReverseIterator rbegin() const noexcept { return m_indexMap.rbegin(); }
+  ConstReverseIterator crbegin() const noexcept { return m_indexMap.crbegin(); }
+
+  ReverseIterator rend() noexcept { return m_indexMap.rend(); }
+  ConstReverseIterator rend() const noexcept { return m_indexMap.rend(); }
+  ConstReverseIterator crend() const noexcept { return m_indexMap.crend(); }
 };
 } // namespace queue
