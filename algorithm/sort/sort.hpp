@@ -13,6 +13,9 @@ concept Comparator =
     std::random_access_iterator<RandomIt> &&
     std::strict_weak_order<Compare&, const std::iter_value_t<RandomIt>&, const std::iter_value_t<RandomIt>&>;
 
+// TODO:
+// is using integerIterator a good idea? what if we have an iterator whose value type is like {string name,
+// int order};
 template <typename RandomIt>
 concept IntegralIterator =
     std::random_access_iterator<RandomIt> && std::integral<std::iter_value_t<RandomIt>>;

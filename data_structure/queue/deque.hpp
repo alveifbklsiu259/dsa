@@ -10,6 +10,16 @@
 constexpr int debugValue = 9999;
 #endif
 
+/*
+ * The Deque is built on top of a **segmented array structure**:
+ *   - The sequence of elements is divided into fixed-size **blocks** (`Block`).
+ *   - These blocks are managed by an **index map** (`IndexMap`) that tracks which blocks are allocated and
+where the head/tail elements live.
+ *   - The block pointers are managed by a circular array though.
+ *   - This design avoids the need for copying/moving any elements when reallocation happens, all it needs to
+do is allocate a new block and update the array that keeps the block pointers.
+ * */
+
 namespace queue {
 
 template <typename T> class Deque {
@@ -104,7 +114,7 @@ private:
     }
 
     void ensureEnoughPrevBlocks() {
-      if (isEmpty()) {
+      if (empty()) {
         reallocateMap(4);
       } else if (!canConstructAtHead()) {
         reallocateMap(getBlockSize() * 2);
@@ -112,7 +122,7 @@ private:
     }
 
     void ensureEnoughNextBlocks() {
-      if (isEmpty()) {
+      if (empty()) {
         reallocateMap(4);
       } else if (!canConstructAtTail()) {
         reallocateMap(getBlockSize() * 2);
@@ -442,7 +452,7 @@ private:
     }
 
     void destroyAtHead() {
-      if (isEmpty()) throw std::underflow_error("Head block is empty");
+      if (empty()) throw std::underflow_error("Head block is empty");
       destroyAt(getElementHeadGlobal());
       bool blockToBeEmpty = m_elementHeadLocal == (getElementsPerBlock() - 1);
       if (blockToBeEmpty) {
@@ -458,7 +468,7 @@ private:
     }
 
     void destroyAtTail() {
-      if (isEmpty()) throw std::underflow_error("Tail block is empty");
+      if (empty()) throw std::underflow_error("Tail block is empty");
       bool blockToBeEmpty = m_elementTailLocal == 1;
       destroyAt(getTailElementGlobalIndex());
 
@@ -473,22 +483,22 @@ private:
     }
 
     T& head() {
-      if (isEmpty()) throw std::underflow_error("Head block is empty");
+      if (empty()) throw std::underflow_error("Head block is empty");
       return *slotAt(getElementHeadGlobal());
     }
 
     const T& head() const {
-      if (isEmpty()) throw std::underflow_error("Head block is empty");
+      if (empty()) throw std::underflow_error("Head block is empty");
       return *slotAt(getElementHeadGlobal());
     }
 
     T& tail() {
-      if (isEmpty()) throw std::underflow_error("Tail block is empty");
+      if (empty()) throw std::underflow_error("Tail block is empty");
       return *slotAt(getTailElementGlobalIndex());
     }
 
     const T& tail() const {
-      if (isEmpty()) throw std::underflow_error("Tail block is empty");
+      if (empty()) throw std::underflow_error("Tail block is empty");
       return *slotAt(getTailElementGlobalIndex());
     }
 
@@ -731,8 +741,8 @@ private:
     }
 #endif
 
-    [[nodiscard]] bool isEmpty() const noexcept { return getElementSize() == 0; }
-    [[nodiscard]] bool isFull() const noexcept {
+    [[nodiscard]] bool empty() const noexcept { return getElementSize() == 0; }
+    [[nodiscard]] bool full() const noexcept {
       return getElementSize() == getBlockSize() * getElementsPerBlock();
     }
     [[nodiscard]] size_t getElementsPerBlock() const noexcept { return Block::blockSize; }
@@ -740,7 +750,7 @@ private:
     [[nodiscard]] size_t getElementSize() const noexcept { return m_elementSize; }
 
     [[nodiscard]] size_t getBlockSize() const noexcept { return m_blockSize; }
-    [[nodiscard]] size_t getBlockCapacity() const noexcept { return m_blocks.getSize(); }
+    [[nodiscard]] size_t getBlockCapacity() const noexcept { return m_blocks.size(); }
   };
 
   IndexMap m_indexMap;
@@ -777,32 +787,32 @@ public:
   void pushFront(T&& val) { emplaceFront(std::move(val)); }
 
   void popFront() {
-    if (isEmpty()) throw std::underflow_error("Dqeue is empty");
+    if (empty()) throw std::underflow_error("Dqeue is empty");
     m_indexMap.destroyAtHead();
   }
 
   void popBack() {
-    if (isEmpty()) throw std::underflow_error("Deque is empty");
+    if (empty()) throw std::underflow_error("Deque is empty");
     m_indexMap.destroyAtTail();
   }
 
   reference front() {
-    if (isEmpty()) throw std::underflow_error("Deque is empty");
+    if (empty()) throw std::underflow_error("Deque is empty");
     return m_indexMap.head();
   }
 
   const_reference front() const {
-    if (isEmpty()) throw std::underflow_error("Deque is empty");
+    if (empty()) throw std::underflow_error("Deque is empty");
     return m_indexMap.head();
   }
 
   reference back() {
-    if (isEmpty()) throw std::underflow_error("Deque is empty");
+    if (empty()) throw std::underflow_error("Deque is empty");
     return m_indexMap.tail();
   }
 
   const_reference back() const {
-    if (isEmpty()) throw std::underflow_error("Deque is empty");
+    if (empty()) throw std::underflow_error("Deque is empty");
     return m_indexMap.tail();
   }
 
@@ -819,8 +829,8 @@ public:
     if constexpr (requires(InputIterator it) { it.m_map; }) {
       // if first and last are from the same deque as the current one
       if (pos.m_map == first.m_map && pos.m_map == last.m_map) {
-        std::vector<value_type> copy{first, last};
-        for (value_type& v : copy) {
+        std::vector<T> copy{first, last};
+        for (T& v : copy) {
           emplace(it, v);
           it++;
         }
@@ -849,8 +859,8 @@ public:
   void printInfo() const noexcept { m_indexMap.printInfo(); }
 #endif
 
-  [[nodiscard]] bool isEmpty() noexcept { return getSize() == 0; }
-  [[nodiscard]] size_t getSize() noexcept { return m_indexMap.getElementSize(); }
+  [[nodiscard]] bool empty() noexcept { return size() == 0; }
+  [[nodiscard]] size_t size() noexcept { return m_indexMap.getElementSize(); }
 
   Iterator begin() noexcept { return m_indexMap.begin(); }
   ConstIterator begin() const noexcept { return m_indexMap.begin(); }

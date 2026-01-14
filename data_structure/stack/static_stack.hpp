@@ -51,10 +51,10 @@ public:
 
   void clear() noexcept;
 
-  [[nodiscard]] bool isEmpty() const noexcept;
-  [[nodiscard]] bool isFull() const noexcept;
+  [[nodiscard]] bool empty() const noexcept;
+  [[nodiscard]] bool full() const noexcept;
   [[nodiscard]] size_t getCapacity() const noexcept;
-  [[nodiscard]] size_t getSize() const noexcept;
+  [[nodiscard]] size_t size() const noexcept;
 };
 
 } // namespace stack

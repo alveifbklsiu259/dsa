@@ -130,8 +130,8 @@ private:
     m_table = std::move(newTable);
   }
 
-  size_t getIndex(const K& key) const noexcept { return spreadHash(key) & (m_table.getCapacity() - 1); }
-  [[nodiscard]] size_t getCapacity() const noexcept { return m_table.getCapacity(); }
+  size_t getIndex(const K& key) const noexcept { return spreadHash(key) & (m_table.capacity() - 1); }
+  [[nodiscard]] size_t getCapacity() const noexcept { return m_table.capacity(); }
 
   [[noreturn]] void throwKeyNotFound(const K& key) const {
     if constexpr (requires(std::ostream& os, const K& k) { os << k; }) {
@@ -147,7 +147,7 @@ public:
   using Iterator = ForwardIterator<false>;
   using ConstIterator = ForwardIterator<true>;
 
-  HashMap() { m_table.resize(m_table.getCapacity()); }
+  HashMap() { m_table.resize(m_table.capacity()); }
 
   V& at(const K& key) {
     Iterator it = find(key);
@@ -184,7 +184,7 @@ public:
   template <typename Pair>
     requires std::constructible_from<HashMapKeyVal<K, V>, Pair&&>
   std::pair<Iterator, bool> insert(Pair&& kv) {
-    if (m_length >= m_table.getCapacity() * HashMap::maxLoadFactor) { rehash(m_table.getCapacity() * 2); }
+    if (m_length >= m_table.capacity() * HashMap::maxLoadFactor) { rehash(m_table.capacity() * 2); }
     Iterator it = find(kv.first);
     if (it != end()) return {it, false};
     BucketList& list = getList(kv.first);
@@ -202,7 +202,7 @@ public:
   }
 
   template <typename... Args> std::pair<Iterator, bool> emplace(const K& key, Args&&... args) {
-    if (m_length >= m_table.getCapacity() * HashMap::maxLoadFactor) { rehash(m_table.getCapacity() * 2); }
+    if (m_length >= m_table.capacity() * HashMap::maxLoadFactor) { rehash(m_table.capacity() * 2); }
     Iterator it = find(key);
     if (it != end()) return {it, false};
     BucketList& list = getList(key);
@@ -212,7 +212,7 @@ public:
   }
 
   [[nodiscard]] bool contains(const K& key) const noexcept { return find(key) != end(); }
-  [[nodiscard]] size_t getSize() const noexcept { return m_length; }
+  [[nodiscard]] size_t size() const noexcept { return m_length; }
 
   size_t erase(const K& key) {
     BucketList& list = getList(key);
@@ -223,7 +223,7 @@ public:
   }
 
   void clear() {
-    for (size_t i = 0; i < m_table.getCapacity(); i++) m_table[i].clear();
+    for (size_t i = 0; i < m_table.capacity(); i++) m_table[i].clear();
     m_length = 0;
   }
 
@@ -236,7 +236,7 @@ public:
   }
 
   Iterator begin() noexcept {
-    for (size_t i = 0; i < m_table.getCapacity(); i++) {
+    for (size_t i = 0; i < m_table.capacity(); i++) {
       typename BucketList::Iterator it = m_table[i].begin();
       if (it != m_table[i].end()) return Iterator(this, i, it);
     }
@@ -244,16 +244,16 @@ public:
   }
 
   ConstIterator begin() const noexcept {
-    for (size_t i = 0; i < m_table.getCapacity(); i++) {
+    for (size_t i = 0; i < m_table.capacity(); i++) {
       typename BucketList::ConstIterator it = m_table[i].begin();
       if (it != m_table[i].end()) return ConstIterator(this, i, it);
     }
     return end();
   }
 
-  Iterator end() noexcept { return Iterator(this, m_table.getCapacity(), typename BucketList::Iterator()); }
+  Iterator end() noexcept { return Iterator(this, m_table.capacity(), typename BucketList::Iterator()); }
   ConstIterator end() const noexcept {
-    return ConstIterator(this, m_table.getCapacity(), typename BucketList::ConstIterator());
+    return ConstIterator(this, m_table.capacity(), typename BucketList::ConstIterator());
   }
 };
 } // namespace hashmap

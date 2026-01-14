@@ -4,6 +4,7 @@
 #include "data_structure/hash_set/hash_set.hpp"
 #include "data_structure/queue/deque.hpp"
 #include "data_structure/queue/dynamic_queue.hpp"
+#include "data_structure/queue/static_queue.hpp"
 #include "data_structure/stack/dynamic_stack.hpp"
 #include <cmath>
 #include <cstddef>
@@ -14,22 +15,19 @@
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
-
 int main() {
-  std::deque<int> dq{1, 2, 3, 4, 5};
-  queue::Deque<int> d{1, 2, 3, 4, 5};
-  queue::Deque<int> d2 = d;
-  for (size_t i = 0; i < 43; ++i) d2.emplaceBack(i + 100);
-  d2.pushBack(100);
-  // d.insert(d.begin(), {1, 2, 3, 4, 5});
 
-  d2.emplace(d2.end() - 2, 3000);
-  d2.printBlocks();
-  d2.printInfo();
-  d2.printBlock({0, 1, 2, 3, 4, 7});
-  auto a = d2.emplace(d2.begin(), 123);
-
+  // std::priority_queue<int, array::DynamicArray<int>> pq;
+  //
   // TODO:
-  // - implement reverse iterator for dynamic array
+  // heap implementation
+  // what do we do after popping/pushing? do we need to make sure the order?
+  //
+  // should we add
+  // using value_type = T;
+  // using size_type = size_t;
+  // using reference = T&;
+  // using const_reference = const T&;
+  // to other containers like hashmap?
   return 0;
 }

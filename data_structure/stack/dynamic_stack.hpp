@@ -18,8 +18,8 @@ public:
 
   void clear();
 
-  [[nodiscard]] bool isEmpty() const noexcept;
-  [[nodiscard]] size_t getSize() const noexcept;
+  [[nodiscard]] bool empty() const noexcept;
+  [[nodiscard]] size_t size() const noexcept;
 };
 } // namespace stack
 

@@ -12,19 +12,19 @@ namespace linkedlist {
 template <typename NodeType> class LinkedListBase {
 protected:
   using ValueType = decltype(std::declval<NodeType>().value);
-  size_t size = 0;          // NOLINT
-  NodeType* head = nullptr; // NOLINT
+  size_t m_size = 0;          // NOLINT
+  NodeType* m_head = nullptr; // NOLINT
 
   void deepCopy(const LinkedListBase& other) {
-    if (other.head == nullptr) {
-      head = nullptr;
-      size = 0;
+    if (other.m_head == nullptr) {
+      m_head = nullptr;
+      m_size = 0;
       return;
     }
-    size = other.size;
-    head = new NodeType(other.head->value); // NOLINT
-    NodeType* current = head;
-    NodeType* otherCurrent = other.head->next;
+    m_size = other.m_size;
+    m_head = new NodeType(other.m_head->value); // NOLINT
+    NodeType* current = m_head;
+    NodeType* otherCurrent = other.m_head->next;
     while (otherCurrent) {
       current->next = new NodeType(otherCurrent->value); // NOLINT
       current = current->next;
@@ -33,9 +33,9 @@ protected:
   }
 
   void move(LinkedListBase&& other) noexcept { // NOLINT
-    size = other.size;
-    head = std::exchange(other.head, nullptr);
-    other.size = 0;
+    m_size = other.m_size;
+    m_head = std::exchange(other.m_head, nullptr);
+    other.m_size = 0;
   }
 
 public:
@@ -67,50 +67,50 @@ public:
 
   ~LinkedListBase() noexcept { clear(); }
 
-  [[nodiscard]] int getSize() const noexcept { return size; }
-  [[nodiscard]] bool isEmpty() const noexcept { return head == nullptr; }
+  [[nodiscard]] int size() const noexcept { return m_size; }
+  [[nodiscard]] bool empty() const noexcept { return m_head == nullptr; }
 
   virtual void pushFront(const ValueType& value) {
-    head = new NodeType(value, head); // NOLINT
-    size++;
+    m_head = new NodeType(value, m_head); // NOLINT
+    m_size++;
   }
 
   virtual void pushFront(ValueType&& value) {
-    head = new NodeType(std::move(value), head); // NOLINT
-    size++;
+    m_head = new NodeType(std::move(value), m_head); // NOLINT
+    m_size++;
   }
 
   template <typename... Args> ValueType& emplaceFront(Args... args) {
-    head = new NodeType(head, std::forward<Args>(args)...); // NOLINT
-    size++;
-    return head->value;
+    m_head = new NodeType(m_head, std::forward<Args>(args)...); // NOLINT
+    m_size++;
+    return m_head->value;
   }
 
   void clear() noexcept {
-    while (head) {
-      NodeType* temp = head;
-      head = head->next;
+    while (m_head) {
+      NodeType* temp = m_head;
+      m_head = m_head->next;
       delete temp; // NOLINT
     }
-    size = 0;
+    m_size = 0;
   }
 
   void popFront() {
-    if (head == nullptr) throw EmptyListException();
-    NodeType* temp = head;
-    head = head->next;
+    if (m_head == nullptr) throw EmptyListException();
+    NodeType* temp = m_head;
+    m_head = m_head->next;
     delete temp; // NOLINT
-    size--;
+    m_size--;
   }
 
   ValueType& front() {
-    if (head == nullptr) throw EmptyListException();
-    return head->value;
+    if (m_head == nullptr) throw EmptyListException();
+    return m_head->value;
   }
 
   const ValueType& front() const {
-    if (head == nullptr) throw EmptyListException();
-    return head->value;
+    if (m_head == nullptr) throw EmptyListException();
+    return m_head->value;
   }
 
   void fromVector(const std::vector<ValueType>& vec) {
@@ -121,13 +121,13 @@ public:
     requires std::predicate<Pred, const ValueType&>
   size_t removeIf(Pred pred) {
     size_t removedCount = 0;
-    NodeType** link = &head;
+    NodeType** link = &m_head;
     while (*link) {
       if (pred((*link)->value)) {
         NodeType* temp = *link;
         *link = (*link)->next;
         delete temp; // NOLINT
-        size--;
+        m_size--;
         removedCount++;
       } else {
         link = &((*link)->next);
@@ -141,7 +141,7 @@ public:
   }
 
   void print() const {
-    NodeType* current = head;
+    NodeType* current = m_head;
     while (current) {
       std::cout << current->value << " --> ";
       current = current->next;
@@ -151,7 +151,7 @@ public:
 
   virtual void reverse() {
     NodeType* prev = nullptr;
-    NodeType* current = head;
+    NodeType* current = m_head;
     NodeType* next = nullptr;
 
     while (current) {
@@ -160,11 +160,11 @@ public:
       prev = current;
       current = next;
     }
-    head = prev;
+    m_head = prev;
   }
 
-  Iterator begin() noexcept(noexcept(Iterator(head))) { return Iterator(head); }
-  ConstIterator begin() const noexcept(noexcept(Iterator(head))) { return ConstIterator(head); }
+  Iterator begin() noexcept(noexcept(Iterator(m_head))) { return Iterator(m_head); }
+  ConstIterator begin() const noexcept(noexcept(Iterator(m_head))) { return ConstIterator(m_head); }
 
   Iterator end() noexcept(noexcept(Iterator(nullptr))) { return Iterator(nullptr); }
   ConstIterator end() const noexcept(noexcept(Iterator(nullptr))) { return ConstIterator(nullptr); }

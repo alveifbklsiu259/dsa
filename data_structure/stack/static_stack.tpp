@@ -17,7 +17,7 @@ STACK_TEMPLATE const T* StaticStack<T, N>::getBuffer(size_t i) const noexcept {
 STACK_TEMPLATE
 template <size_t M> void StaticStack<T, N>::copy(const StaticStack<T, M>& other) {
   static_assert(M <= N, "Source stack too large for target stack");
-  m_length = other.getSize();
+  m_length = other.size();
   size_t i = 0;
   try {
     while (i < m_length) {
@@ -37,7 +37,7 @@ void StaticStack<T, N>::move(
     StaticStack<T, M>&& other
 ) noexcept(std::is_nothrow_move_constructible_v<T>) { // NOLINT
   static_assert(M <= N, "Source stack too large for target stack");
-  m_length = other.getSize();
+  m_length = other.size();
   size_t i = 0;
   try {
     while (i < m_length) {
@@ -124,7 +124,7 @@ StaticStack<T, N>::operator=(StaticStack<T, N>&& other) noexcept(std::is_nothrow
 STACK_TEMPLATE StaticStack<T, N>::~StaticStack() noexcept { clear(); }
 
 STACK_TEMPLATE template <typename... Args> T& StaticStack<T, N>::emplace(Args&&... args) {
-  if (isFull()) throw std::overflow_error("Stack is full");
+  if (full()) throw std::overflow_error("Stack is full");
   T* newDataPtr = new (getBuffer(m_length++)) T(std::forward<Args>(args)...); // NOLINT
   return *newDataPtr;
 }
@@ -133,7 +133,7 @@ STACK_TEMPLATE void StaticStack<T, N>::push(const T& value) { emplace(value); }
 STACK_TEMPLATE void StaticStack<T, N>::push(T&& value) { emplace(std::move(value)); }
 
 STACK_TEMPLATE T StaticStack<T, N>::pop() {
-  if (isEmpty()) throw std::underflow_error("Stack is empty");
+  if (empty()) throw std::underflow_error("Stack is empty");
   m_length--;
   constexpr bool preferMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
   T top = preferMove ? std::move(*getBuffer(m_length)) : *getBuffer(m_length);
@@ -142,7 +142,7 @@ STACK_TEMPLATE T StaticStack<T, N>::pop() {
 }
 
 STACK_TEMPLATE const T& StaticStack<T, N>::top() const {
-  if (isEmpty()) throw std::underflow_error("Stack is empty");
+  if (empty()) throw std::underflow_error("Stack is empty");
   return *getBuffer(m_length - 1);
 }
 
@@ -151,13 +151,13 @@ STACK_TEMPLATE void StaticStack<T, N>::clear() noexcept {
   m_length = 0;
 }
 
-STACK_TEMPLATE bool StaticStack<T, N>::isEmpty() const noexcept { return m_length == 0; }
+STACK_TEMPLATE bool StaticStack<T, N>::empty() const noexcept { return m_length == 0; }
 
-STACK_TEMPLATE bool StaticStack<T, N>::isFull() const noexcept { return m_length == m_capacity; }
+STACK_TEMPLATE bool StaticStack<T, N>::full() const noexcept { return m_length == m_capacity; }
 
 STACK_TEMPLATE
 size_t StaticStack<T, N>::getCapacity() const noexcept { return m_capacity; }
 
-STACK_TEMPLATE size_t StaticStack<T, N>::getSize() const noexcept { return m_length; }
+STACK_TEMPLATE size_t StaticStack<T, N>::size() const noexcept { return m_length; }
 
 } // namespace stack

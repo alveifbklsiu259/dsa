@@ -44,10 +44,10 @@ public:
   const T& front() const;
   const T& back() const;
   void clear() noexcept;
-  [[nodiscard]] size_t getSize() const noexcept;
+  [[nodiscard]] size_t size() const noexcept;
   [[nodiscard]] size_t getCapacity() const noexcept;
-  [[nodiscard]] bool isFull() const noexcept;
-  [[nodiscard]] bool isEmpty() const noexcept;
+  [[nodiscard]] bool full() const noexcept;
+  [[nodiscard]] bool empty() const noexcept;
 };
 } // namespace queue
 

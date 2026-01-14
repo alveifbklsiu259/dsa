@@ -23,9 +23,9 @@ public:
 
   void clear();
 
-  [[nodiscard]] size_t getSize() const;
-  [[nodiscard]] bool isEmpty() const;
-  [[nodiscard]] bool isFull() const;
+  [[nodiscard]] size_t size() const;
+  [[nodiscard]] bool empty() const;
+  [[nodiscard]] bool full() const;
 };
 } // namespace queue
 

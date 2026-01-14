@@ -63,7 +63,7 @@ public:
 
   void clear() { m_map.clear(); }
 
-  [[nodiscard]] size_t getSize() const noexcept { return m_map.getSize(); }
+  [[nodiscard]] size_t size() const noexcept { return m_map.size(); }
 
   std::pair<Iterator, bool> insert(const Key& key) {
     auto [it, inserted] = m_map.insert(key, DummyT{});

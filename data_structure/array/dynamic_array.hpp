@@ -126,6 +126,10 @@ public:
     bool operator<=(const DynamicArrayIterator& other) const { return m_ptr <= other.m_ptr; }
   };
 
+  using value_type = T;
+  using size_type = size_t;
+  using reference = T&;
+  using const_reference = const T&;
   using Iterator = DynamicArrayIterator<false>;
   using ConstIterator = DynamicArrayIterator<true>;
   using ReverseIterator = std::reverse_iterator<Iterator>;
@@ -170,8 +174,8 @@ public:
 
   ~DynamicArray() noexcept { release(); };
 
-  [[nodiscard]] size_t getSize() const noexcept { return m_length; };
-  [[nodiscard]] size_t getCapacity() const noexcept { return m_capacity; };
+  [[nodiscard]] size_t size() const noexcept { return m_length; };
+  [[nodiscard]] size_t capacity() const noexcept { return m_capacity; };
   [[nodiscard]] bool empty() const noexcept { return m_length == 0; }
 
   void clear() noexcept {
@@ -205,6 +209,8 @@ public:
     m_length -= count;
     return Iterator{m_data + start};
   }
+
+  void popBack() { erase(cend() - 1); }
 
   template <typename... Args> Iterator emplace(ConstIterator pos, Args&&... args) {
     if (pos < cbegin() || pos > cend()) throw std::out_of_range("Emplace Position out of range");
@@ -282,6 +288,15 @@ public:
     checkBound(index);
     return m_data[index];
   }
+
+  const T& at(size_t index) const { return operator[](index); }
+  T& at(size_t index) { return operator[](index); }
+
+  const T& front() const { return operator[](0); }
+  T& front() { return operator[](0); }
+
+  const T& back() const { return operator[](m_length - 1); }
+  T& back() { return operator[](m_length - 1); }
 
   Iterator begin() noexcept { return Iterator{m_data}; }
   ConstIterator begin() const noexcept { return ConstIterator{m_data}; }

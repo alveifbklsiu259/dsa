@@ -102,7 +102,7 @@ StaticQueue<T, N>::operator=(StaticQueue<T, M>&& other) noexcept(std::is_nothrow
 QUEUE_TEMPLATE StaticQueue<T, N>::~StaticQueue() noexcept { clear(); }
 
 QUEUE_TEMPLATE template <typename... Args> T& StaticQueue<T, N>::emplace(Args&&... args) {
-  if (isFull()) throw std::overflow_error("Queue is full");
+  if (full()) throw std::overflow_error("Queue is full");
   T* newDataPtr = std::construct_at(getBuffer(m_tail), std::forward<Args>(args)...); // NOLINT
   m_tail = (m_tail + 1) % m_capacity;
   m_length++;
@@ -113,7 +113,7 @@ QUEUE_TEMPLATE void StaticQueue<T, N>::push(const T& val) { emplace(val); }
 QUEUE_TEMPLATE void StaticQueue<T, N>::push(T&& val) { emplace(std::move(val)); }
 
 QUEUE_TEMPLATE T StaticQueue<T, N>::pop() {
-  if (isEmpty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::underflow_error("Queue is empty");
 
   constexpr bool preferMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
   T data = preferMove ? std::move(*getBuffer(m_head)) : *getBuffer(m_head);
@@ -124,17 +124,17 @@ QUEUE_TEMPLATE T StaticQueue<T, N>::pop() {
 }
 
 QUEUE_TEMPLATE const T& StaticQueue<T, N>::front() const {
-  if (isEmpty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::underflow_error("Queue is empty");
   return *getBuffer(m_head);
 }
 
 QUEUE_TEMPLATE const T& StaticQueue<T, N>::back() const {
-  if (isEmpty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::underflow_error("Queue is empty");
   return *getBuffer(m_tail);
 }
 
 QUEUE_TEMPLATE void StaticQueue<T, N>::clear() noexcept {
-  while (!isEmpty()) {
+  while (!empty()) {
     std::destroy_at(getBuffer(m_head));
     m_head = (m_head + 1) % m_capacity;
     m_length--;
@@ -142,9 +142,9 @@ QUEUE_TEMPLATE void StaticQueue<T, N>::clear() noexcept {
   m_head = m_tail = 0;
 }
 
-QUEUE_TEMPLATE size_t StaticQueue<T, N>::getSize() const noexcept { return m_length; }
+QUEUE_TEMPLATE size_t StaticQueue<T, N>::size() const noexcept { return m_length; }
 QUEUE_TEMPLATE size_t StaticQueue<T, N>::getCapacity() const noexcept { return m_capacity; }
-QUEUE_TEMPLATE bool StaticQueue<T, N>::isFull() const noexcept { return m_length == m_capacity; }
-QUEUE_TEMPLATE bool StaticQueue<T, N>::isEmpty() const noexcept { return m_length == 0; }
+QUEUE_TEMPLATE bool StaticQueue<T, N>::full() const noexcept { return m_length == m_capacity; }
+QUEUE_TEMPLATE bool StaticQueue<T, N>::empty() const noexcept { return m_length == 0; }
 
 } // namespace queue

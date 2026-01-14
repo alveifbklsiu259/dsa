@@ -6,7 +6,7 @@
 namespace queue {
 
 DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::resize() {
-  size_t newCapacity = m_data.getCapacity() * 2;
+  size_t newCapacity = m_data.capacity() * 2;
   array::DynamicArray<T> newData;
   newData.reserve(newCapacity);
 
@@ -14,9 +14,9 @@ DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::resize() {
 
   for (size_t i = 0; i < m_length; i++) {
     if constexpr (preferMove) {
-      newData.pushBack(std::move(m_data[(i + m_head) % m_data.getCapacity()]));
+      newData.pushBack(std::move(m_data[(i + m_head) % m_data.capacity()]));
     } else {
-      newData.pushBack(m_data[(i + m_head) % m_data.getCapacity()]);
+      newData.pushBack(m_data[(i + m_head) % m_data.capacity()]);
     }
   }
   m_data = preferMove ? std::move(newData) : newData;
@@ -25,7 +25,7 @@ DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::resize() {
 }
 
 DYNAMIC_QUEUE_TEMPLATE template <typename... Args> T& DynamicQueue<T>::emplace(Args&&... args) {
-  if (isFull()) resize();
+  if (full()) resize();
   // not true emplace, array::DynamicArray does not have an emplace-at-index method.
   if (m_tail < m_head) {
     m_data[m_tail] = T(std::forward<Args>(args)...);
@@ -35,7 +35,7 @@ DYNAMIC_QUEUE_TEMPLATE template <typename... Args> T& DynamicQueue<T>::emplace(A
 
   m_length++;
   size_t oldTail = m_tail;
-  m_tail = (m_tail + 1) % m_data.getCapacity();
+  m_tail = (m_tail + 1) % m_data.capacity();
   return m_data[oldTail];
 }
 
@@ -43,19 +43,19 @@ DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::push(const T& val) { emplace(val); 
 DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::push(T&& val) { emplace(std::move(val)); }
 
 DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::pop() {
-  if (isEmpty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::underflow_error("Queue is empty");
   m_length--;
-  m_head = (m_head + 1) % m_data.getCapacity();
+  m_head = (m_head + 1) % m_data.capacity();
 }
 
 DYNAMIC_QUEUE_TEMPLATE const T& DynamicQueue<T>::front() const {
-  if (isEmpty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::underflow_error("Queue is empty");
   return m_data[m_head];
 }
 
 DYNAMIC_QUEUE_TEMPLATE const T& DynamicQueue<T>::back() const {
-  if (isEmpty()) throw std::underflow_error("Queue is empty");
-  return m_data[(m_tail + m_data.getCapacity() - 1) % m_data.getCapacity()];
+  if (empty()) throw std::underflow_error("Queue is empty");
+  return m_data[(m_tail + m_data.capacity() - 1) % m_data.capacity()];
 }
 
 DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::clear() {
@@ -65,7 +65,7 @@ DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::clear() {
   m_length = 0;
 }
 
-DYNAMIC_QUEUE_TEMPLATE size_t DynamicQueue<T>::getSize() const { return m_length; }
-DYNAMIC_QUEUE_TEMPLATE bool DynamicQueue<T>::isEmpty() const { return m_length == 0; }
-DYNAMIC_QUEUE_TEMPLATE bool DynamicQueue<T>::isFull() const { return m_data.getCapacity() == m_length; }
+DYNAMIC_QUEUE_TEMPLATE size_t DynamicQueue<T>::size() const { return m_length; }
+DYNAMIC_QUEUE_TEMPLATE bool DynamicQueue<T>::empty() const { return m_length == 0; }
+DYNAMIC_QUEUE_TEMPLATE bool DynamicQueue<T>::full() const { return m_data.capacity() == m_length; }
 } // namespace queue
