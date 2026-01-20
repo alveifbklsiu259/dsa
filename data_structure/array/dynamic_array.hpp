@@ -215,8 +215,11 @@ public:
   template <typename... Args> Iterator emplace(ConstIterator pos, Args&&... args) {
     if (pos < cbegin() || pos > cend()) throw std::out_of_range("Emplace Position out of range");
 
-    if (m_length == m_capacity) reserve(m_capacity == 0 ? 2 : m_capacity * 2);
+    // this has to happen before calling reserve because reserve may render pos dangling.
+    // dangling ptr arithmetic is Undefined Behavior.
     size_t idx = static_cast<size_t>(pos - cbegin());
+
+    if (m_length == m_capacity) reserve(m_capacity == 0 ? 2 : m_capacity * 2);
 
     constexpr bool preferMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
 
@@ -298,6 +301,12 @@ public:
   const T& back() const { return operator[](m_length - 1); }
   T& back() { return operator[](m_length - 1); }
 
+  void swap(DynamicArray& other) noexcept {
+    std::swap(m_data, other.m_data);
+    std::swap(m_length, other.m_length);
+    std::swap(m_capacity, other.m_capacity);
+  }
+
   Iterator begin() noexcept { return Iterator{m_data}; }
   ConstIterator begin() const noexcept { return ConstIterator{m_data}; }
   ConstIterator cbegin() const noexcept { return ConstIterator{m_data}; }
@@ -314,4 +323,6 @@ public:
   ConstReverseIterator rend() const noexcept { return ConstReverseIterator{begin()}; }
   ConstReverseIterator crend() const noexcept { return ConstReverseIterator{begin()}; }
 };
+
+template <typename T> void swap(DynamicArray<T>& a, DynamicArray<T>& b) noexcept { a.swap(b); } // for ADL
 } // namespace array
