@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <cassert>
 #include <new>
 #include <stdexcept>
 #include <type_traits>
@@ -17,6 +18,8 @@ private:
           "Index out of bounds, index: " + std::to_string(index) + ", size: " + std::to_string(m_length)
       );
   }
+
+  void assertBound(size_t index) const noexcept { assert(index < m_length && "Index out of bounds"); }
 
   void release() noexcept {
     clear();
@@ -63,67 +66,73 @@ public:
     using difference_type = std::ptrdiff_t;
     using iterator_category = std::random_access_iterator_tag;
 
-    DynamicArrayIterator() = default;
-    DynamicArrayIterator(const DynamicArrayIterator&) = default;
-    DynamicArrayIterator(DynamicArrayIterator&&) = default;
-    DynamicArrayIterator& operator=(const DynamicArrayIterator&) = default;
-    DynamicArrayIterator& operator=(DynamicArrayIterator&&) = default;
-    ~DynamicArrayIterator() = default;
+    constexpr DynamicArrayIterator() = default;
+    constexpr DynamicArrayIterator(const DynamicArrayIterator&) = default;
+    constexpr DynamicArrayIterator(DynamicArrayIterator&&) = default;
+    constexpr DynamicArrayIterator& operator=(const DynamicArrayIterator&) = default;
+    constexpr DynamicArrayIterator& operator=(DynamicArrayIterator&&) = default;
+    constexpr ~DynamicArrayIterator() = default;
 
-    explicit DynamicArrayIterator(pointer p = nullptr) : m_ptr(p) {};
+    constexpr explicit DynamicArrayIterator(pointer p = nullptr) : m_ptr(p) {};
 
     // Conversion constructor for mutable iterator to const iterator, not a copy constructor.
-    DynamicArrayIterator(const DynamicArrayIterator<false>& other)
+    constexpr DynamicArrayIterator(const DynamicArrayIterator<false>& other)
       requires IsConst
         : m_ptr(other.m_ptr) {}
 
-    reference operator*() const { return *m_ptr; }
-    pointer operator->() const { return m_ptr; }
+    constexpr reference operator*() const { return *m_ptr; }
+    constexpr pointer operator->() const { return m_ptr; }
 
-    reference operator[](difference_type n) const { return *(m_ptr + n); }
+    constexpr reference operator[](difference_type n) const { return *(m_ptr + n); }
 
-    DynamicArrayIterator& operator++() {
+    constexpr DynamicArrayIterator& operator++() {
       m_ptr++;
       return *this;
     }
 
-    DynamicArrayIterator operator++(int) {
+    constexpr DynamicArrayIterator operator++(int) {
       DynamicArrayIterator snapshot = *this;
       m_ptr++;
       return snapshot;
     }
 
-    DynamicArrayIterator& operator--() {
+    constexpr DynamicArrayIterator& operator--() {
       m_ptr--;
       return *this;
     }
 
-    DynamicArrayIterator operator--(int) {
+    constexpr DynamicArrayIterator operator--(int) {
       DynamicArrayIterator snapshot = *this;
       m_ptr--;
       return snapshot;
     }
 
-    DynamicArrayIterator& operator+=(difference_type n) {
+    constexpr DynamicArrayIterator& operator+=(difference_type n) {
       m_ptr += n;
       return *this;
     }
 
-    DynamicArrayIterator& operator-=(difference_type n) {
+    constexpr DynamicArrayIterator& operator-=(difference_type n) {
       m_ptr -= n;
       return *this;
     }
 
-    DynamicArrayIterator operator+(difference_type n) const { return DynamicArrayIterator(m_ptr + n); }
-    DynamicArrayIterator operator-(difference_type n) const { return DynamicArrayIterator(m_ptr - n); }
-    difference_type operator-(const DynamicArrayIterator& other) const { return m_ptr - other.m_ptr; }
+    constexpr DynamicArrayIterator operator+(difference_type n) const {
+      return DynamicArrayIterator(m_ptr + n);
+    }
+    constexpr DynamicArrayIterator operator-(difference_type n) const {
+      return DynamicArrayIterator(m_ptr - n);
+    }
+    constexpr difference_type operator-(const DynamicArrayIterator& other) const {
+      return m_ptr - other.m_ptr;
+    }
 
-    bool operator==(const DynamicArrayIterator& other) const { return m_ptr == other.m_ptr; }
-    bool operator!=(const DynamicArrayIterator& other) const { return m_ptr != other.m_ptr; }
-    bool operator>(const DynamicArrayIterator& other) const { return m_ptr > other.m_ptr; }
-    bool operator<(const DynamicArrayIterator& other) const { return m_ptr < other.m_ptr; }
-    bool operator>=(const DynamicArrayIterator& other) const { return m_ptr >= other.m_ptr; }
-    bool operator<=(const DynamicArrayIterator& other) const { return m_ptr <= other.m_ptr; }
+    constexpr bool operator==(const DynamicArrayIterator& other) const { return m_ptr == other.m_ptr; }
+    constexpr bool operator!=(const DynamicArrayIterator& other) const { return m_ptr != other.m_ptr; }
+    constexpr bool operator>(const DynamicArrayIterator& other) const { return m_ptr > other.m_ptr; }
+    constexpr bool operator<(const DynamicArrayIterator& other) const { return m_ptr < other.m_ptr; }
+    constexpr bool operator>=(const DynamicArrayIterator& other) const { return m_ptr >= other.m_ptr; }
+    constexpr bool operator<=(const DynamicArrayIterator& other) const { return m_ptr <= other.m_ptr; }
   };
 
   using value_type = T;
@@ -173,10 +182,6 @@ public:
   };
 
   ~DynamicArray() noexcept { release(); };
-
-  [[nodiscard]] size_t size() const noexcept { return m_length; };
-  [[nodiscard]] size_t capacity() const noexcept { return m_capacity; };
-  [[nodiscard]] bool empty() const noexcept { return m_length == 0; }
 
   void clear() noexcept {
     for (size_t i = 0; i < m_length; i++) { m_data[i].~T(); }
@@ -282,46 +287,56 @@ public:
     m_capacity = newCapacity;
   }
 
-  const T& operator[](size_t index) const {
+  constexpr const T& operator[](size_t index) const noexcept {
+    assertBound(index);
+    return m_data[index];
+  }
+
+  constexpr T& operator[](size_t index) noexcept {
+    assertBound(index);
+    return m_data[index];
+  }
+
+  const T& at(size_t index) const {
+    checkBound(index);
+    return m_data[index];
+  }
+  T& at(size_t index) {
     checkBound(index);
     return m_data[index];
   }
 
-  T& operator[](size_t index) {
-    checkBound(index);
-    return m_data[index];
-  }
+  constexpr const T& front() const noexcept { return operator[](0); }
+  constexpr T& front() noexcept { return operator[](0); }
 
-  const T& at(size_t index) const { return operator[](index); }
-  T& at(size_t index) { return operator[](index); }
+  constexpr const T& back() const noexcept { return operator[](m_length - 1); }
+  constexpr T& back() noexcept { return operator[](m_length - 1); }
 
-  const T& front() const { return operator[](0); }
-  T& front() { return operator[](0); }
-
-  const T& back() const { return operator[](m_length - 1); }
-  T& back() { return operator[](m_length - 1); }
-
-  void swap(DynamicArray& other) noexcept {
+  constexpr void swap(DynamicArray& other) noexcept {
     std::swap(m_data, other.m_data);
     std::swap(m_length, other.m_length);
     std::swap(m_capacity, other.m_capacity);
   }
 
-  Iterator begin() noexcept { return Iterator{m_data}; }
-  ConstIterator begin() const noexcept { return ConstIterator{m_data}; }
-  ConstIterator cbegin() const noexcept { return ConstIterator{m_data}; }
+  [[nodiscard]] constexpr size_t size() const noexcept { return m_length; };
+  [[nodiscard]] constexpr size_t capacity() const noexcept { return m_capacity; };
+  [[nodiscard]] constexpr bool empty() const noexcept { return m_length == 0; }
 
-  Iterator end() noexcept { return Iterator{m_data + m_length}; }
-  ConstIterator end() const noexcept { return ConstIterator{m_data + m_length}; }
-  ConstIterator cend() const noexcept { return ConstIterator{m_data + m_length}; }
+  constexpr Iterator begin() noexcept { return Iterator{m_data}; }
+  constexpr ConstIterator begin() const noexcept { return ConstIterator{m_data}; }
+  constexpr ConstIterator cbegin() const noexcept { return ConstIterator{m_data}; }
 
-  ReverseIterator rbegin() noexcept { return ReverseIterator{end()}; }
-  ConstReverseIterator rbegin() const noexcept { return ConstReverseIterator{end()}; }
-  ConstReverseIterator crbegin() const noexcept { return ConstReverseIterator{end()}; }
+  constexpr Iterator end() noexcept { return Iterator{m_data + m_length}; }
+  constexpr ConstIterator end() const noexcept { return ConstIterator{m_data + m_length}; }
+  constexpr ConstIterator cend() const noexcept { return ConstIterator{m_data + m_length}; }
 
-  ReverseIterator rend() noexcept { return ReverseIterator{begin()}; }
-  ConstReverseIterator rend() const noexcept { return ConstReverseIterator{begin()}; }
-  ConstReverseIterator crend() const noexcept { return ConstReverseIterator{begin()}; }
+  constexpr ReverseIterator rbegin() noexcept { return ReverseIterator{end()}; }
+  constexpr ConstReverseIterator rbegin() const noexcept { return ConstReverseIterator{end()}; }
+  constexpr ConstReverseIterator crbegin() const noexcept { return ConstReverseIterator{end()}; }
+
+  constexpr ReverseIterator rend() noexcept { return ReverseIterator{begin()}; }
+  constexpr ConstReverseIterator rend() const noexcept { return ConstReverseIterator{begin()}; }
+  constexpr ConstReverseIterator crend() const noexcept { return ConstReverseIterator{begin()}; }
 };
 
 template <typename T> void swap(DynamicArray<T>& a, DynamicArray<T>& b) noexcept { a.swap(b); } // for ADL

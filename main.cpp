@@ -8,6 +8,7 @@
 #include "data_structure/queue/static_queue.hpp"
 #include "data_structure/stack/dynamic_stack.hpp"
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <deque>
@@ -40,32 +41,18 @@ struct TaskCompare {
   }
 };
 
+// struct Counter {
+//   int x = 0;
+//   [[nodiscard]] constexpr int inc() { return x; }
+//   constexpr Counter() = default;
+// };
+
 int main() {
-  // std::vector<int> v;
-  // test same priority, can we ensure that the first one appears before the later ones if priority are the
-  // sane?
-  queue::PriorityQueue<Task, array::DynamicArray<Task>, TaskCompare> pq;
-  // queue::PriorityQueue<Task, std::vector<Task>, TaskCompare> pq;
-  pq.push({"Write report", 1});
-  pq.push({"Fix bug", 2});
-  pq.push({"Team meeting", 3});
-  pq.push({"Code review", 4});
-
-  queue::PriorityQueue<Task, array::DynamicArray<Task>, TaskCompare> pq2;
-  // queue::PriorityQueue<Task, std::vector<Task>, TaskCompare> pq;
-  pq2.push({"Write report", 10});
-  pq2.push({"Fix bug", 11});
-  pq2.push({"Team meeting", 12});
-  pq2.push({"Code review", 13});
-
-  pq.swap(pq2);
-
-  // std::cout << "Top task: " << pq.top() << "\n";
-  while (!pq.empty()) {
-    std::cout << "Popped: " << pq.top() << "\n";
-    pq.pop();
-  }
-
+  // array::DynamicArray<int> a{1, 2, 3};
+  // a.pushBack(123);
+  std::vector<int> v{1};
+  // std::cout << v[1] << '\n';
+  std::cout << v.at(1) << '\n';
   // TODO:
   // should we add
   // using value_type = T;

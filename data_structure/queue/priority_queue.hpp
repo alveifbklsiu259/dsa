@@ -20,10 +20,11 @@ concept CamelSequence = requires(T t, S s) {
 };
 
 template <typename T, typename S>
-concept Sequence = (SnakeSequence<T, S> || CamelSequence<T, S>) && requires(T t, S s, size_t i) {
+concept Sequence = (SnakeSequence<T, S> || CamelSequence<T, S>) && requires(T t, S s, S& sRef, size_t i) {
   { s.empty() } -> std::same_as<bool>;
   { s.size() } -> std::convertible_to<size_t>;
   { s[i] } -> std::same_as<T&>;
+  { swap(sRef, sRef) } -> std::same_as<void>; // require ADL swap
 };
 
 } // namespace detail
@@ -174,8 +175,9 @@ public:
   }
 
   void swap(PriorityQueue& other) noexcept {
-    m_data.swap(other.m_data);
-    std::swap(m_compare, other.m_compare);
+    using std::swap;
+    swap(m_data, other.m_data);
+    swap(m_compare, other.m_compare);
   }
 
   [[nodiscard]] constexpr bool empty() const noexcept { return m_data.empty(); }
