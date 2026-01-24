@@ -1,3 +1,4 @@
+#pragma once
 #include "../array/dynamic_array.hpp"
 #include <functional>
 namespace queue {
@@ -46,7 +47,7 @@ private:
   size_t right(size_t idx) { return (2 * idx) + 2; }
 
   void bubbleDown(size_t idx) {
-    size_t n = m_data.size();
+    size_t n = size();
 
     while (true) {
       size_t leftIdx = left(idx);
@@ -74,7 +75,7 @@ private:
 
   void bottomUpHeapify() {
     if (!m_data.empty()) {
-      for (int i = (m_data.size() / 2) - 1; i >= 0; --i) bubbleDown(i);
+      for (int i = (size() / 2) - 1; i >= 0; --i) bubbleDown(i);
     }
   }
 
@@ -99,7 +100,7 @@ private:
   }
 
   [[nodiscard]] constexpr size_t headIndex() const noexcept { return 0; }
-  [[nodiscard]] constexpr size_t tailIndex() const noexcept { return m_data.size() - 1; }
+  [[nodiscard]] constexpr size_t tailIndex() const noexcept { return size() - 1; }
 
 public:
   using value_type = typename S::value_type;

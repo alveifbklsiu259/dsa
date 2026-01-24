@@ -40,19 +40,16 @@ struct TaskCompare {
     // returns true if lhs < rhs → max heap
   }
 };
-
-// struct Counter {
-//   int x = 0;
-//   [[nodiscard]] constexpr int inc() { return x; }
-//   constexpr Counter() = default;
-// };
-
 int main() {
-  // array::DynamicArray<int> a{1, 2, 3};
-  // a.pushBack(123);
-  std::vector<int> v{1};
-  // std::cout << v[1] << '\n';
-  std::cout << v.at(1) << '\n';
+  // array::DynamicArray<int> v2{1, 2, 0, 6, 3, 1, 7};
+  array::DynamicArray<Task> v2{};
+  v2.pushBack({.name = "Run errands", .priority = 2});
+  v2.pushBack({.name = "Do the laundry", .priority = 1});
+  v2.pushBack({.name = "Code review", .priority = 3});
+  // sort::heapSort(v2.begin(), v2.end());
+
+  sort::heapSort(v2.begin(), v2.end(), TaskCompare());
+  for (auto& n : v2) std::cout << n << ' ';
   // TODO:
   // should we add
   // using value_type = T;

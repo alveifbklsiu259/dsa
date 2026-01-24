@@ -1,8 +1,8 @@
 #pragma once
+#include "../../data_structure/array/dynamic_array.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <iterator>
-#include <vector>
 
 namespace sort {
 
@@ -10,12 +10,8 @@ namespace detail {
 
 template <typename RandomIt, typename Compare>
 concept Comparator =
-    std::random_access_iterator<RandomIt> &&
-    std::strict_weak_order<Compare&, const std::iter_value_t<RandomIt>&, const std::iter_value_t<RandomIt>&>;
+    std::random_access_iterator<RandomIt> && std::indirect_strict_weak_order<Compare&, RandomIt>;
 
-// TODO:
-// is using integerIterator a good idea? what if we have an iterator whose value type is like {string name,
-// int order};
 template <typename RandomIt>
 concept IntegralIterator =
     std::random_access_iterator<RandomIt> && std::integral<std::iter_value_t<RandomIt>>;
@@ -23,15 +19,15 @@ concept IntegralIterator =
 
 enum class Order : uint8_t { Ascending, Descending };
 
-template <std::random_access_iterator RandomIt, typename Compare = std::greater<>>
+template <std::random_access_iterator RandomIt, typename Compare = std::less<>>
   requires detail::Comparator<RandomIt, Compare>
 void bubbleSort(RandomIt first, RandomIt last, Compare compare = Compare{}) {
   auto n = std::distance(first, last);
   for (decltype(n) i = 0; i < n - 1; i++) {
     bool swapped = false;
     for (RandomIt j = first; j < last - 1 - i; j++) {
-      if (compare(*j, *(j + 1))) {
-        std::iter_swap(j, j + 1);
+      if (compare(*(j + 1), *j)) {
+        std::iter_swap(j + 1, j);
         swapped = true;
       }
     }
@@ -66,6 +62,35 @@ void insertionSort(RandomIt first, RandomIt last, Compare compare = Compare{}) {
   }
 }
 
+template <std::random_access_iterator RandomIt, typename Compare = std::less<>>
+  requires detail::Comparator<RandomIt, Compare>
+void heapSort(RandomIt first, RandomIt last, Compare compare = Compare{}) {
+  // in-place heap sort uses O(1) auxiliary space, using priority queue would take O(n)
+  auto n = std::distance(first, last);
+  if (n <= 0) return;
+
+  auto bubbleDown = [&](size_t idx, size_t heapSize) -> void {
+    while (true) {
+      size_t extreme = idx;
+      size_t left = (idx * 2) + 1;
+      size_t right = (idx * 2) + 2;
+      if (left < heapSize && compare(*(first + extreme), *(first + left))) extreme = left;
+      if (right < heapSize && compare(*(first + extreme), *(first + right))) extreme = right;
+      if (extreme == idx) break;
+      std::iter_swap(first + extreme, first + idx);
+      idx = extreme;
+    }
+  };
+
+  // bottom-up heapify
+  for (int i = ((int)n / 2) - 1; i >= 0; --i) { bubbleDown(i, n); }
+
+  for (size_t i = (size_t)n - 1; i > 0; --i) {
+    std::iter_swap(first, first + i);
+    bubbleDown(0, i);
+  }
+}
+
 template <detail::IntegralIterator RandomIt>
 void countingSort(RandomIt first, RandomIt last, Order order = Order::Ascending) {
   if (first == last) return;
@@ -76,11 +101,11 @@ void countingSort(RandomIt first, RandomIt last, Order order = Order::Ascending)
   size_t distance = std::distance(first, last);
 
   size_t range = static_cast<size_t>(maxVal - minVal + 1);
-  std::vector<size_t> count(range, 0);
+  array::DynamicArray<size_t> count(range, 0);
   for (RandomIt it = first; it != last; it++) count[*it - minVal]++;
   for (size_t i = 1; i < range; i++) count[i] += count[i - 1];
 
-  std::vector<ValueType> output(distance);
+  array::DynamicArray<ValueType> output(distance);
   if (order == Order::Ascending) {
     for (RandomIt it = last; it != first;) {
       it--;

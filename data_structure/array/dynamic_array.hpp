@@ -65,6 +65,7 @@ public:
     using pointer = RawPtr;
     using difference_type = std::ptrdiff_t;
     using iterator_category = std::random_access_iterator_tag;
+    using iterator_concept = std::random_access_iterator_tag;
 
     constexpr DynamicArrayIterator() = default;
     constexpr DynamicArrayIterator(const DynamicArrayIterator&) = default;
@@ -73,7 +74,7 @@ public:
     constexpr DynamicArrayIterator& operator=(DynamicArrayIterator&&) = default;
     constexpr ~DynamicArrayIterator() = default;
 
-    constexpr explicit DynamicArrayIterator(pointer p = nullptr) : m_ptr(p) {};
+    constexpr explicit DynamicArrayIterator(pointer p) : m_ptr(p) {};
 
     // Conversion constructor for mutable iterator to const iterator, not a copy constructor.
     constexpr DynamicArrayIterator(const DynamicArrayIterator<false>& other)
@@ -120,6 +121,12 @@ public:
     constexpr DynamicArrayIterator operator+(difference_type n) const {
       return DynamicArrayIterator(m_ptr + n);
     }
+
+    friend constexpr DynamicArrayIterator
+    operator+(difference_type n, const DynamicArrayIterator& it) noexcept {
+      return it + n;
+    }
+
     constexpr DynamicArrayIterator operator-(difference_type n) const {
       return DynamicArrayIterator(m_ptr - n);
     }
