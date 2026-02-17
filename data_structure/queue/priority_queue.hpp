@@ -110,7 +110,8 @@ public:
 
   constexpr PriorityQueue() = default;
 
-  constexpr PriorityQueue(const Compare& compare, S&& s = S{}) : m_data(std::move(s)), m_compare(compare) {}
+  constexpr PriorityQueue(const Compare& compare, S&& seq = S{})
+      : m_data(std::move(seq)), m_compare(compare) {}
 
   constexpr PriorityQueue(const Compare& compare, const S& seq) : m_data(seq), m_compare(compare) {}
 
@@ -153,7 +154,7 @@ public:
     return *this;
   }
 
-  constexpr ~PriorityQueue() = default;
+  constexpr ~PriorityQueue() noexcept = default;
 
   template <typename... Args> void emplace(Args&&... args) {
     emplaceBackData(std::forward<Args>(args)...);

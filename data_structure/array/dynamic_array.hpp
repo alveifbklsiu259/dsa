@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <cassert>
+#include <memory>
 #include <new>
 #include <stdexcept>
 #include <type_traits>
@@ -9,8 +10,8 @@ namespace array {
 template <typename T> class DynamicArray {
 private:
   T* m_data = nullptr;
-  size_t m_length;
-  size_t m_capacity;
+  size_t m_length = 0;
+  size_t m_capacity = 0;
 
   void checkBound(size_t index) const {
     if (index >= m_length)
@@ -23,7 +24,7 @@ private:
 
   void release() noexcept {
     clear();
-    ::operator delete(m_data, std::align_val_t{alignof(T)});
+    deallocate(m_data);
     m_data = nullptr;
     m_length = 0;
     m_capacity = 0;
@@ -50,6 +51,11 @@ private:
     return static_cast<T*>(::operator new(capacity * sizeof(T), std::align_val_t{alignof(T)}));
   }
 
+  static void deallocate(T* ptr) noexcept {
+    if (ptr == nullptr) return;
+    ::operator delete(ptr, std::align_val_t{alignof(T)});
+  }
+
 public:
   template <bool IsConst> class DynamicArrayIterator {
     // Each instantiation of a class template is a distinct type
@@ -69,10 +75,10 @@ public:
 
     constexpr DynamicArrayIterator() = default;
     constexpr DynamicArrayIterator(const DynamicArrayIterator&) = default;
-    constexpr DynamicArrayIterator(DynamicArrayIterator&&) = default;
+    constexpr DynamicArrayIterator(DynamicArrayIterator&&) noexcept = default;
     constexpr DynamicArrayIterator& operator=(const DynamicArrayIterator&) = default;
-    constexpr DynamicArrayIterator& operator=(DynamicArrayIterator&&) = default;
-    constexpr ~DynamicArrayIterator() = default;
+    constexpr DynamicArrayIterator& operator=(DynamicArrayIterator&&) noexcept = default;
+    constexpr ~DynamicArrayIterator() noexcept = default;
 
     constexpr explicit DynamicArrayIterator(pointer p) : m_ptr(p) {};
 
@@ -151,22 +157,47 @@ public:
   using ReverseIterator = std::reverse_iterator<Iterator>;
   using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
 
-  DynamicArray() : m_capacity(2), m_length(0), m_data(allocate(2)) {};
+  DynamicArray() : m_capacity(2), m_data(allocate(2)) {};
 
   DynamicArray(size_t size) : DynamicArray(size, T{}) {}
 
   DynamicArray(size_t size, const T& value) : m_capacity(size), m_length(size) {
-    if (size <= 0) throw std::invalid_argument("Size must be positive");
     m_data = allocate(m_capacity);
-    for (size_t i = 0; i < m_length; i++) new (m_data + i) T(value);
+    try {
+      std::uninitialized_fill_n(m_data, m_length, value);
+    } catch (...) {
+      deallocate(m_data);
+      throw;
+    }
   }
 
-  DynamicArray(std::initializer_list<T> init)
-      : m_capacity(init.size()), m_length(init.size()), m_data(allocate(init.size())) {
+  DynamicArray(std::initializer_list<T> init) : DynamicArray(init.begin(), init.end()) {}
+
+  template <std::input_iterator InputIt>
+    requires std::constructible_from<T, std::iter_value_t<InputIt>>
+  DynamicArray(InputIt first, InputIt last) {
+    size_t size = std::distance(first, last);
+    if (size <= 0) {
+      m_capacity = 0;
+      m_length = 0;
+      m_data = nullptr;
+      return;
+    }
+
+    m_capacity = size;
+    m_length = size;
+    m_data = allocate(size);
+
     size_t i = 0;
-    for (const T& element : init) {
-      new (m_data + i) T(element);
-      i++;
+    try {
+      for (auto it = first; it != last; ++it) {
+        new (m_data + i) T(*it);
+        ++i;
+      }
+    } catch (...) {
+      for (size_t j = 0; j < i; ++j) m_data[j].~T();
+      deallocate(m_data);
+      throw;
     }
   }
 
@@ -284,12 +315,12 @@ public:
       }
     } catch (...) {
       for (size_t j = 0; j < i; j++) { newData[j].~T(); }
-      ::operator delete(newData, std::align_val_t{alignof(T)});
+      deallocate(newData);
       throw;
     }
 
     for (size_t i = 0; i < m_length; i++) m_data[i].~T();
-    ::operator delete(m_data, std::align_val_t{alignof(T)});
+    deallocate(m_data);
     m_data = newData;
     m_capacity = newCapacity;
   }

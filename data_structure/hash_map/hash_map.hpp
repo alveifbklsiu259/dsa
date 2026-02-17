@@ -11,24 +11,24 @@
 namespace hashmap {
 
 template <typename K, typename V> class HashMapKeyVal {
-private:
-  K m_key;
-  V m_value;
 
 public:
+  K first;  // NOLINT
+  V second; // NOLINT
+
   template <typename Pair>
     requires std::constructible_from<K, decltype(std::get<0>(std::declval<Pair>()))> &&
                  std::constructible_from<V, decltype(std::get<1>(std::declval<Pair>()))>
   HashMapKeyVal(Pair&& p)
-      : m_key(std::get<0>(std::forward<Pair>(p))), m_value(std::get<1>(std::forward<Pair>(p))) {}
+      : first(std::get<0>(std::forward<Pair>(p))), second(std::get<1>(std::forward<Pair>(p))) {}
 
   template <typename... Args>
-  HashMapKeyVal(const K& key, Args&&... args) : m_key(key), m_value(std::forward<Args>(args)...) {}
+  HashMapKeyVal(const K& key, Args&&... args) : first(key), second(std::forward<Args>(args)...) {}
 
-  [[nodiscard]] K& getKey() noexcept { return m_key; }
-  [[nodiscard]] const K& getKey() const noexcept { return m_key; }
-  [[nodiscard]] V& getValue() noexcept { return m_value; }
-  [[nodiscard]] const V& getValue() const noexcept { return m_value; }
+  [[nodiscard]] K& getKey() noexcept { return first; }
+  [[nodiscard]] const K& getKey() const noexcept { return first; }
+  [[nodiscard]] V& getValue() noexcept { return second; }
+  [[nodiscard]] const V& getValue() const noexcept { return second; }
 };
 
 template <typename K, typename V, typename Hasher = std::hash<K>, typename KeyEqual = std::equal_to<K>>
@@ -47,7 +47,8 @@ private:
   template <bool IsConst> class ForwardIterator {
 
   private:
-    using MapType = std::conditional_t<IsConst, const HashMap<K, V, Hasher>, HashMap<K, V, Hasher>>;
+    using MapType =
+        std::conditional_t<IsConst, const HashMap<K, V, Hasher, KeyEqual>, HashMap<K, V, Hasher, KeyEqual>>;
 
     using BucketIterator =
         std::conditional_t<IsConst, typename BucketList::ConstIterator, typename BucketList::Iterator>;
@@ -58,11 +59,10 @@ private:
 
     void skipEmptyBucket() {
       if (m_map == nullptr) return;
-      while (m_bucketIdx < m_map->m_table.getCapacity() &&
+      while (m_bucketIdx < m_map->m_table.capacity() &&
              m_bucketIterator == m_map->m_table[m_bucketIdx].end()) {
         m_bucketIdx++;
-        if (m_bucketIdx < m_map->m_table.getCapacity())
-          m_bucketIterator = m_map->m_table[m_bucketIdx].begin();
+        if (m_bucketIdx < m_map->m_table.capacity()) m_bucketIterator = m_map->m_table[m_bucketIdx].begin();
       }
     }
 
@@ -118,8 +118,7 @@ private:
   }
 
   void rehash(size_t newCapacity) {
-    array::DynamicArray<BucketList> newTable;
-    newTable.resize(newCapacity);
+    array::DynamicArray<BucketList> newTable(newCapacity);
 
     for (BucketList& list : m_table) {
       for (const HashMapKeyVal<K, V>& data : list) {
@@ -131,7 +130,7 @@ private:
   }
 
   size_t getIndex(const K& key) const noexcept { return spreadHash(key) & (m_table.capacity() - 1); }
-  [[nodiscard]] size_t getCapacity() const noexcept { return m_table.capacity(); }
+  [[nodiscard]] size_t capacity() const noexcept { return m_table.capacity(); }
 
   [[noreturn]] void throwKeyNotFound(const K& key) const {
     if constexpr (requires(std::ostream& os, const K& k) { os << k; }) {
@@ -147,7 +146,17 @@ public:
   using Iterator = ForwardIterator<false>;
   using ConstIterator = ForwardIterator<true>;
 
-  HashMap() { m_table.resize(m_table.capacity()); }
+  HashMap() : m_table(array::DynamicArray<BucketList>{2}) {}
+
+  HashMap(size_t n, Hasher hasher = {}, KeyEqual eq = {})
+      : m_table(array::DynamicArray<BucketList>{n}), m_hasher(hasher), m_keyEqual(eq) {}
+
+  template <std::input_iterator InputIt>
+    requires std::constructible_from<HashMapKeyVal<K, V>, std::iter_value_t<InputIt>>
+  HashMap(InputIt first, InputIt last, size_t n = 2, Hasher hasher = {}, KeyEqual eq = {})
+      : HashMap(n, hasher, eq) {
+    for (auto it = first; it != last; ++it) { emplace((*it).first, (*it).second); }
+  }
 
   V& at(const K& key) {
     Iterator it = find(key);
@@ -181,32 +190,22 @@ public:
     return end();
   }
 
-  template <typename Pair>
-    requires std::constructible_from<HashMapKeyVal<K, V>, Pair&&>
-  std::pair<Iterator, bool> insert(Pair&& kv) {
-    if (m_length >= m_table.capacity() * HashMap::maxLoadFactor) { rehash(m_table.capacity() * 2); }
-    Iterator it = find(kv.first);
-    if (it != end()) return {it, false};
-    BucketList& list = getList(kv.first);
-    list.pushFront(HashMapKeyVal<K, V>(std::forward<Pair>(kv)));
-    m_length++;
-    return {Iterator(this, getIndex(kv.first), list.begin()), true};
+  std::pair<Iterator, bool> insert(const HashMapKeyVal<K, V>& kv) { return emplace(kv.first, kv.second); }
+
+  std::pair<Iterator, bool> insert(HashMapKeyVal<K, V>&& kv) { // NOLINT
+    return emplace(std::move(kv.first), std::move(kv.second));
   }
 
-  std::pair<Iterator, bool> insert(const K& key, const V& value) {
-    return this->insert(std::pair<K, V>(key, value));
-  }
-
-  std::pair<Iterator, bool> insert(K&& key, V&& value) {
-    return this->insert(std::pair<K, V>(std::move(key), std::move(value)));
-  }
+  std::pair<Iterator, bool> insert(const K& key, const V& value) { return emplace(key, value); }
+  std::pair<Iterator, bool> insert(K&& key, V&& value) { return emplace(std::move(key), std::move(value)); }
 
   template <typename... Args> std::pair<Iterator, bool> emplace(const K& key, Args&&... args) {
-    if (m_length >= m_table.capacity() * HashMap::maxLoadFactor) { rehash(m_table.capacity() * 2); }
+    size_t newCapacity = m_table.capacity() == 0 ? 2 : m_table.capacity() * 2;
+    if (m_length >= m_table.capacity() * HashMap::maxLoadFactor) rehash(newCapacity);
     Iterator it = find(key);
     if (it != end()) return {it, false};
     BucketList& list = getList(key);
-    HashMapKeyVal<K, V>& kv = list.emplaceFront(key, std::forward<Args>(args)...);
+    list.emplaceFront(key, std::forward<Args>(args)...);
     m_length++;
     return {Iterator(this, getIndex(key), list.begin()), true};
   }
@@ -234,6 +233,18 @@ public:
     list.pushFront(HashMapKeyVal<K, V>{key, V{}});
     return list.front().getValue();
   }
+
+  bool operator==(const HashMap& other) const noexcept {
+    if (m_length != other.m_length) return false;
+    for (auto& [key, val] : *this) {
+      auto it = other.find(key);
+      if (it == other.end()) return false;
+      if (it->getValue() != val) return false;
+    }
+    return true;
+  }
+
+  bool operator!=(const HashMap& other) { return !(*this == other); }
 
   Iterator begin() noexcept {
     for (size_t i = 0; i < m_table.capacity(); i++) {

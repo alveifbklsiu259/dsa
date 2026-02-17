@@ -17,31 +17,31 @@ public:
   using ConstReverseIterator = linkedlist::ReverseIterator<DoublyLinkNode<T>>;
 
   void pushFront(const T& value) override {
-    gsl::owner<DoublyLinkNode<T>*> newNode = new DoublyLinkNode<T>(value, this->head);
-    if (this->head) { this->head->prev = newNode; }
+    gsl::owner<DoublyLinkNode<T>*> newNode = new DoublyLinkNode<T>(value, this->m_head);
+    if (this->m_head) { this->m_head->prev = newNode; }
     if (tail == nullptr) tail = newNode;
 
-    this->head = newNode;
-    this->size++;
+    this->m_head = newNode;
+    this->m_size++;
   }
 
   void pushFront(T&& value) override {
-    gsl::owner<DoublyLinkNode<T>*> newNode = new DoublyLinkNode<T>(std::move(value), this->head);
-    if (this->head) { this->head->prev = newNode; }
+    gsl::owner<DoublyLinkNode<T>*> newNode = new DoublyLinkNode<T>(std::move(value), this->m_head);
+    if (this->m_head) { this->m_head->prev = newNode; }
     if (tail == nullptr) tail = newNode;
 
-    this->head = newNode;
-    this->size++;
+    this->m_head = newNode;
+    this->m_size++;
   }
 
   template <typename... Args> T& emplaceFront(Args&&... args) {
     gsl::owner<DoublyLinkNode<T>*> newNode =
-        new DoublyLinkNode<T>(T(std::forward<Args>(args)...), this->head);
-    if (this->head) this->head->prev = newNode;
+        new DoublyLinkNode<T>(T(std::forward<Args>(args)...), this->m_head);
+    if (this->m_head) this->m_head->prev = newNode;
     if (!this->tail) this->tail = newNode;
 
-    this->head = newNode;
-    this->size++;
+    this->m_head = newNode;
+    this->m_size++;
     return newNode->value;
   }
 
@@ -50,11 +50,11 @@ public:
     if (tail) {
       tail->next = newNode;
     } else {
-      this->head = newNode;
+      this->m_head = newNode;
     }
 
     tail = newNode;
-    this->size++;
+    this->m_size++;
   }
 
   void pushBack(T&& value) {
@@ -62,11 +62,11 @@ public:
     if (tail) {
       tail->next = newNode;
     } else {
-      this->head = newNode;
+      this->m_head = newNode;
     }
 
     tail = newNode;
-    this->size++;
+    this->m_size++;
   }
 
   template <typename... Args> T& emplaceBack(Args&&... args) {
@@ -75,11 +75,11 @@ public:
     if (tail) {
       tail->next = newNode;
     } else {
-      this->head = newNode;
+      this->m_head = newNode;
     }
 
     tail = newNode;
-    this->size++;
+    this->m_size++;
     return newNode->value;
   }
 
@@ -91,11 +91,11 @@ public:
     if (tail) {
       tail->next = nullptr;
     } else {
-      this->head = nullptr;
+      this->m_head = nullptr;
     }
 
     delete temp; // NOLINT
-    this->size--;
+    this->m_size--;
   }
 
   T& back() {
@@ -118,18 +118,18 @@ public:
   }
 
   void reverse() override {
-    DoublyLinkNode<T>* current = this->head;
-    tail = this->head;
+    DoublyLinkNode<T>* current = this->m_head;
+    tail = this->m_head;
 
     while (current) {
       std::swap(current->prev, current->next);
-      if (!current->prev) this->head = current;
+      if (!current->prev) this->m_head = current;
       current = current->prev;
     }
   }
 
-  Iterator begin() noexcept { return Iterator(this->head); }
-  ConstIterator begin() const noexcept { return ConstIterator(this->head); }
+  Iterator begin() noexcept { return Iterator(this->m_head); }
+  ConstIterator begin() const noexcept { return ConstIterator(this->m_head); }
 
   Iterator end() noexcept { return Iterator(tail); }
   ConstIterator end() const noexcept { return ConstIterator(tail); }

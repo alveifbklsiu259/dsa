@@ -53,9 +53,25 @@ public:
   using ConstIterator = Iterator;
 
   HashSet() = default;
-  HashSet(std::initializer_list<Key> init) {
-    for (const Key& key : init) m_map.insert(key, DummyT{});
-  };
+
+  HashSet(size_t n, const Hasher& hasher = Hasher{}, const KeyEqual& eq = KeyEqual{})
+      : m_map(n, hasher, eq) {}
+
+  template <std::input_iterator InputIt>
+    requires std::constructible_from<Key, std::iter_value_t<InputIt>>
+  HashSet(
+      InputIt first,
+      InputIt last,
+      size_t n = 2,
+      const Hasher& hasher = Hasher{},
+      const KeyEqual& eq = KeyEqual{}
+  )
+      : HashSet(n, hasher, eq) {
+    for (auto it = first; it != last; ++it) emplace(*it);
+  }
+
+  HashSet(std::initializer_list<Key> init, const Hasher& hasher = Hasher{}, const KeyEqual& eq = KeyEqual{})
+      : HashSet(init.begin(), init.end(), init.size(), hasher, eq) {};
 
   bool contains(const Key& key) const noexcept { return m_map.contains(key); }
 
@@ -66,12 +82,12 @@ public:
   [[nodiscard]] size_t size() const noexcept { return m_map.size(); }
 
   std::pair<Iterator, bool> insert(const Key& key) {
-    auto [it, inserted] = m_map.insert(key, DummyT{});
+    auto [it, inserted] = emplace(key, DummyT{});
     return {Iterator(it), inserted};
   }
 
   std::pair<Iterator, bool> insert(Key&& key) {
-    auto [it, inserted] = m_map.insert(std::move(key), DummyT{});
+    auto [it, inserted] = emplace(std::move(key), DummyT{});
     return {Iterator(it), inserted};
   }
 

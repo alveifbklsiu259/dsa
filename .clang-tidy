@@ -21,10 +21,10 @@ Checks: >
   -cppcoreguidelines-avoid-magic-numbers
 
 # Treat all warnings from enabled checks as warnings (not errors)
-WarningsAsErrors: ''
+WarningsAsErrors: ""
 
 # Restrict analysis to project headers (optional)
-HeaderFilterRegex: '.*'
+HeaderFilterRegex: ".*"
 
 # Respect your .clang-format style for fixes
 FormatStyle: file
@@ -37,5 +37,8 @@ CheckOptions:
   - { key: readability-identifier-naming.ClassMemberCase, value: camelBack }
   - { key: readability-identifier-naming.PrivateMemberPrefix, value: m_ }
   - { key: readability-identifier-naming.FunctionCase, value: camelBack }
-  - { key: readability-identifier-naming.VariableCase, value:  camelBack}
-  - { key: readability-identifier-naming.MacroDefinitionCase, value: UPPER_CASE }
+  - { key: readability-identifier-naming.VariableCase, value: camelBack }
+  - {
+      key: readability-identifier-naming.MacroDefinitionCase,
+      value: UPPER_CASE,
+    }

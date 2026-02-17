@@ -726,7 +726,7 @@ private:
                 << "Element Size: " << getElementSize() << '\n';
     }
 
-    [[nodiscard]] std::string padStart(const std::string& s, std::size_t length, char fill) const {
+    [[nodiscard]] std::string padStart(const std::string& s, std::size_t length, char fill) const { // NOLINT
       if (s.size() >= length) return s;
 
       const std::size_t padCount = length - s.size();
