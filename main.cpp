@@ -9,7 +9,9 @@
 #include "data_structure/stack/dynamic_stack.hpp"
 #include "data_structure/tree/binary_tree.hpp"
 #include "data_structure/tree/node.hpp"
+#include "data_structure/tree/tree-visualizer.hpp"
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
@@ -18,6 +20,7 @@
 #include <functional>
 #include <iostream>
 #include <list>
+#include <numeric>
 #include <queue>
 #include <ranges>
 #include <stack>
@@ -37,6 +40,7 @@ public:
   bool operator==(const Task&) const = default;
   // Task() = default;
   Task(std::string s, int priority) : name(std::move(s)), priority(priority) {}
+  std::string toString() { return ""; }
 };
 struct TaskHasher {
   size_t operator()(const Task& t) const noexcept {
@@ -57,10 +61,40 @@ struct TaskCompare {
     // returns true if lhs < rhs → max heap
   }
 };
+class Solution {
+public:
+  std::vector<std::string> letterCombinations(std::string digits) {
+    std::vector<std::string> res;
+    size_t n = digits.size();
+    if (n == 0) return res;
+    std::string cur;
+    std::unordered_map<char, std::string> mapping{{'2', "abc"}, {'3', "def"},  {'4', "ghi"}, {'5', "jkl"},
+                                                  {'6', "mno"}, {'7', "pqrs"}, {'8', "tuv"}, {'9', "wxyz"}};
+    std::function<void(size_t idx)> backtrack = [&](size_t idx) {
+      if (cur.size() == n) {
+        res.emplace_back(cur);
+        return;
+      }
+      std::string letters = mapping[digits[idx]];
+      for (char c : letters) {
+        cur.push_back(c);
+        backtrack(idx + 1);
+        cur.pop_back();
+      }
+    };
+    backtrack(0);
+    return res;
+  }
+};
 
 void foo(tree::Node<int>& node) { std::cout << node.value << ' '; };
+void baz(tree::Node<int>& node, size_t level) { std::cout << node.value << ' '; };
 void bar(tree::Node<Task>& node) { std::cout << node.value << ' '; };
 int main() {
+  std::string s;
+  std::array<int, 3> a{1, 2, 3};
+  int values[3]{1, 2, 3};
+  int* values2 = new int[3]{1, 2, 3};
 
   array::DynamicArray<int> preorder{9, 9, 20, 15, 7};  // root -> left -> right
   array::DynamicArray<int> inorder{9, 9, 15, 20, 7};   // left -> root -> right
@@ -123,11 +157,12 @@ int main() {
   // t.fromCompleteTree({1, std::nullopt, 3, std::nullopt, std::nullopt, 4, 5});
   tree::BinaryTree<int> t;
   const auto& null = std::nullopt;
-  // t.fromArrayRepresentation({1, null, 1, null, null, 4, null, null, null, null, null, 5, 6, null, null});
-  t.fromInPre({2, 1}, {1, 2});
-  t.insert(3);
-  t.insert(4);
-  t.insert(5);
+  t.fromArrayRepresentation({1, null, 1, null, null, -4, null, null, null, null, null, 5, 6, null, null});
+  // t.fromArrayRepresentation({1, 2, 3, 4, 5, 6});
+  // t.fromInPre({2, 1}, {1, 2});
+  // t.insert(3);
+  // t.insert(4);
+  // t.insert(5);
   std::cout << "\ninorder (left -> root -> right): \n";
   t.inorderTraverse(foo);
   std::cout << "\ninorder reverse (right -> root -> left): \n";
@@ -137,9 +172,11 @@ int main() {
   std::cout << "\npostorder (left -> right -> root): \n";
   t.postorderTraverse(foo);
   std::cout << "\nlevelorder: \n";
-  t.levelorderTraverse(foo);
+  t.levelorderTraverse(baz);
   std::cout << '\n';
 
+  tree::TreeVisualizer tv;
+  tv.visualize(t, true);
   // auto* found = t.find(1);
   // if (found != nullptr) std::cout << "Found! the value is: " << found->value << '\n';
 

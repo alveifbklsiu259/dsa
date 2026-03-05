@@ -40,8 +40,10 @@ struct Frame {
 
 } // namespace detail
 
+// TODO:
 // when we extend BinaryTree from BinarySearchTree, we need to have some check or rewrite tree-constructing
 // methods like fromInPre. or maybe use that hook design pattern to insert check in the beginning
+// maybe add a getArrayRepresentation method
 
 // maybe consider an interface that all trees implement
 
@@ -51,6 +53,8 @@ struct Frame {
 
 // maybe we can have different begin/end for inorder/preorder... by using the traversal methods we already
 // have
+
+// swap method
 
 // also check priority queue, should we make left,right, parent constexpr?
 // copy/move constructors for hashmap
@@ -105,6 +109,9 @@ class BinaryTree {
 private:
   static constexpr auto defaultShouldBreak = [](Node<T>&) { return false; };
   using DefaultBreakPredicate = decltype(defaultShouldBreak);
+
+  static constexpr auto defaultShouldBreakWithLevel = [](Node<T>&, size_t) { return false; };
+  using DefaultBreakPredicateWithLevel = decltype(defaultShouldBreakWithLevel);
 
   gsl::owner<Node<T>*> m_root = nullptr;
   Hasher m_hasher;
@@ -427,24 +434,31 @@ private:
     return true;
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
+  template <
+      std::invocable<Node<T>&, size_t /* level, starts from 0 */> Callback,
+      std::predicate<Node<T>&, size_t /* level, starts from 0 */> ShouldBreak = DefaultBreakPredicate>
   bool levelorderIterative(
       Node<T>* node,
       Callback&& cb, // NOLINT allow move-only callable
       ShouldBreak shouldBreak = defaultShouldBreak
   ) const {
     if (node == nullptr) return true;
+    size_t level = 0;
 
     queue::Deque<Node<T>*> q{node};
     while (!q.empty()) {
-      Node<T>* cur = q.front();
-      q.popFront();
+      size_t levelSize = q.size();
+      for (size_t i = 0; i < levelSize; ++i) {
+        Node<T>* cur = q.front();
+        q.popFront();
 
-      cb(*cur);
-      if (shouldBreak(*cur)) return false;
+        cb(*cur, level);
+        if (shouldBreak(*cur, level)) return false;
 
-      if (cur->left) q.pushBack(cur->left);
-      if (cur->right) q.pushBack(cur->right);
+        if (cur->left) q.pushBack(cur->left);
+        if (cur->right) q.pushBack(cur->right);
+      }
+      level++;
     }
     return true;
   }
@@ -494,12 +508,9 @@ private:
 
       const T& rootVal = *f.seqBegin;
       gsl::owner<Node<T>*> node = new Node<T>(rootVal);
-      if (!f.parent)
-        root = node;
-      else if (f.attachLeft)
-        f.parent->left = node;
-      else
-        f.parent->right = node;
+      if (!f.parent) root = node;
+      else if (f.attachLeft) f.parent->left = node;
+      else f.parent->right = node;
 
       if (inorderPos[rootVal].empty()) {
         throw std::invalid_argument("Please make sure the inorder and preorder sequences are correct.");
@@ -549,12 +560,9 @@ private:
       const T& rootVal = *std::prev(f.seqEnd);
       gsl::owner<Node<T>*> node = new Node<T>(rootVal);
 
-      if (!f.parent)
-        root = node;
-      else if (f.attachLeft)
-        f.parent->left = node;
-      else
-        f.parent->right = node;
+      if (!f.parent) root = node;
+      else if (f.attachLeft) f.parent->left = node;
+      else f.parent->right = node;
 
       if (inorderPos[rootVal].empty()) {
         throw std::invalid_argument("Please make sure the inorder and postorder sequences are correct.");
@@ -612,12 +620,9 @@ private:
       const T& rootVal = *f.seqBegin;
       gsl::owner<Node<T>*> node = new Node<T>(rootVal);
 
-      if (!f.parent)
-        root = node;
-      else if (f.attachLeft)
-        f.parent->left = node;
-      else
-        f.parent->right = node;
+      if (!f.parent) root = node;
+      else if (f.attachLeft) f.parent->left = node;
+      else f.parent->right = node;
 
       if (inorderPos[rootVal].empty()) {
         throw std::invalid_argument("Please make sure the inorder and levelorder sequences are correct.");
@@ -721,30 +726,24 @@ private:
     Node<T>* newTree = parent;
 
     if (!target->left && !target->right) {
-      if (parent && parent->left == target)
-        parent->left = nullptr;
-      else if (parent && parent->right == target)
-        parent->right = nullptr;
+      if (parent && parent->left == target) parent->left = nullptr;
+      else if (parent && parent->right == target) parent->right = nullptr;
       delete target; // NOLINT
 
     } else if (!target->left) { // only right child
       if (parent == nullptr) {
         newTree = target->right;
       } else {
-        if (parent->left == target)
-          parent->left = target->right;
-        else
-          parent->right = target->right;
+        if (parent->left == target) parent->left = target->right;
+        else parent->right = target->right;
       }
       delete target;             // NOLINT
     } else if (!target->right) { // only left child
       if (parent == nullptr) {
         newTree = target->left;
       } else {
-        if (parent->left == target)
-          parent->left = target->left;
-        else
-          parent->right = target->left;
+        if (parent->left == target) parent->left = target->left;
+        else parent->right = target->left;
       }
       delete target; // NOLINT
     } else {         // has both right and left
@@ -756,10 +755,8 @@ private:
       if (parent == nullptr) {
         newTree = target->left;
       } else {
-        if (parent->left == target)
-          parent->left = target->left;
-        else
-          parent->right = target->left;
+        if (parent->left == target) parent->left = target->left;
+        else parent->right = target->left;
       }
       delete target; // NOLINT
     }
@@ -843,7 +840,19 @@ public:
   }
 
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
-  bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak) const {
+  bool levelorderTraverse(
+      Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak // NOLINT allow move-only callable
+  ) const {
+    return levelorderTraverse(
+        [&](Node<T>& node, size_t) { cb(node); }, [&](Node<T>& node, size_t) { return shouldBreak(node); }
+    );
+  }
+
+  template <
+      std::invocable<Node<T>&, size_t /* level, starts from 0 */> Callback,
+      std::predicate<Node<T>&, size_t /* level, starts from 0 */> ShouldBreak =
+          DefaultBreakPredicateWithLevel>
+  bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreakWithLevel) const {
     return levelorderIterative(m_root, std::forward<Callback>(cb), shouldBreak);
   }
 
