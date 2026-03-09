@@ -177,7 +177,7 @@ public:
   }
 
   void swap(PriorityQueue& other) noexcept {
-    using std::swap;
+    using std::swap; // enable ADL
     swap(m_data, other.m_data);
     swap(m_compare, other.m_compare);
   }

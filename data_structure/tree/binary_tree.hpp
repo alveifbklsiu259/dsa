@@ -3,61 +3,25 @@
 #include "../linked_list/doubly_linked_list.hpp"
 #include "../queue/deque.hpp"
 #include "../stack/dynamic_stack.hpp"
+#include "./detail.hpp"
 #include "./node.hpp"
 #include <gsl/gsl>
 #include <optional>
 
 namespace tree {
 
-namespace detail {
-
-template <typename T, typename Seq>
-concept BidirectionalSequence =
-    std::ranges::bidirectional_range<Seq> && std::same_as<std::ranges::range_value_t<Seq>, T>;
-
-template <typename T, typename Seq>
-concept RandomAccessOptionalSequence =
-    std::ranges::random_access_range<Seq> && std::same_as<std::ranges::range_value_t<Seq>, std::optional<T>>;
-
-template <typename T, typename H>
-concept Hasher =
-    std::invocable<H, const T&> && std::convertible_to<std::invoke_result_t<H, const T&>, size_t>;
-
-template <typename T, typename K>
-concept KeyEqual = std::predicate<K, const T&, const T&>;
-
-template <typename T, typename Iter>
-  requires std::input_iterator<Iter> && std::same_as<std::remove_cvref_t<std::iter_value_t<Iter>>, T>
-struct Frame {
-  Iter inBegin;
-  Iter inEnd;
-  Iter seqBegin; // we use the name "seq" here in order to make it unambiguous, it can be either preorder,
-                 // postorder or levelorder
-  Iter seqEnd;
-  Node<T>* parent;
-  bool attachLeft;
-};
-
-} // namespace detail
-
 // TODO:
 // when we extend BinaryTree from BinarySearchTree, we need to have some check or rewrite tree-constructing
 // methods like fromInPre. or maybe use that hook design pattern to insert check in the beginning
-// maybe add a getArrayRepresentation method
 
 // maybe consider an interface that all trees implement
-
-// https://github.com/yousinix/bst-ascii-visualization
-
-// delete in BST https://leetcode.com/problems/delete-node-in-a-bst/description/
 
 // maybe we can have different begin/end for inorder/preorder... by using the traversal methods we already
 // have
 
-// swap method
-
 // also check priority queue, should we make left,right, parent constexpr?
-// copy/move constructors for hashmap
+
+// copy/move constructors, swap method for hashmap
 // should rewrite static array, it uses array underneath, also Deque uses std::array, should switch to
 // array::StaticArray
 
@@ -106,113 +70,167 @@ template <typename T, typename Hasher = std::hash<T>, typename KeyEqual = std::e
   requires detail::Hasher<T, Hasher> && detail::KeyEqual<T, KeyEqual>
 class BinaryTree {
 
-private:
-  static constexpr auto defaultShouldBreak = [](Node<T>&) { return false; };
-  using DefaultBreakPredicate = decltype(defaultShouldBreak);
+protected:
+  void setRoot(gsl::owner<Node<T>*> node) noexcept { m_root = node; }
+  void setRoot(std::nullptr_t) noexcept { m_root = static_cast<gsl::owner<Node<T>*>>(nullptr); }
 
-  static constexpr auto defaultShouldBreakWithLevel = [](Node<T>&, size_t) { return false; };
-  using DefaultBreakPredicateWithLevel = decltype(defaultShouldBreakWithLevel);
+  bool keyEqual(const T& a, const T& b) const noexcept { return m_keyEqual(a, b); }
+
+  bool eraseNode(Node<T>* target, Node<T>* parent) { // NOLINT
+    if (target == nullptr || empty()) return false;
+    bool hasBothChildren = target->left() != nullptr && target->right() != nullptr;
+
+    if (hasBothChildren) {
+      Node<T>* predecessorParent = target;
+      Node<T>* predecessor = target->left();
+
+      while (predecessor->right() != nullptr) {
+        predecessorParent = predecessor;
+        predecessor = predecessor->right();
+      }
+
+      target->setValue(predecessor->value());
+      target = predecessor;
+      parent = predecessorParent;
+    }
+
+    // target has at most one child now
+    Node<T>* child = target->left() != nullptr ? target->left() : target->right();
+
+    if (parent == nullptr) {
+      assert(root() == nullptr);
+      setRoot(child);
+    } else if (parent->left() == target) {
+      parent->setLeft(child);
+    } else {
+      parent->setRight(child);
+    }
+
+    delete target; // NOLINT;
+    return true;
+  }
+
+private:
+  // using NodeType for both Node<T> and const Node<T>
+  template <typename NodeType> class DefaultBreak {
+  public:
+    constexpr bool operator()(NodeType& /*_node*/) const noexcept { return false; }
+  };
+
+  template <typename NodeType> class DefaultBreakWithLevel {
+  public:
+    constexpr bool operator()(NodeType& /*_node*/, size_t /*_level*/) const noexcept { return false; }
+  };
 
   gsl::owner<Node<T>*> m_root = nullptr;
   Hasher m_hasher;
   KeyEqual m_keyEqual;
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
-  bool preorderRecursive(Node<T>* node, Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak) const {
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
+  bool preorderRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
     if (node == nullptr) return true;
 
     cb(*node);
     if (shouldBreak(*node)) return false;
 
-    if (!preorderRecursive(node->left, std::forward<Callback>(cb), shouldBreak)) { return false; }
+    if (!preorderRecursive(node->left(), std::forward<Callback>(cb), shouldBreak)) { return false; }
 
-    if (!preorderRecursive(node->right, std::forward<Callback>(cb), shouldBreak)) { return false; }
+    if (!preorderRecursive(node->right(), std::forward<Callback>(cb), shouldBreak)) { return false; }
 
     return true;
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
   bool preorderIterative(
-      Node<T>* node,
+      NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
-      ShouldBreak shouldBreak = defaultShouldBreak
-
+      ShouldBreak shouldBreak = {}
   ) const {
     if (node == nullptr) return true;
 
-    queue::Deque<Node<T>*> stack{node};
+    queue::Deque<NodeType*> stack{node};
     while (!stack.empty()) {
-      Node<T>* cur = stack.back();
+      NodeType* cur = stack.back();
       stack.popBack();
 
       cb(*cur);
       if (shouldBreak(*cur)) return false;
 
-      if (cur->right) stack.pushBack(cur->right);
-      if (cur->left) stack.pushBack(cur->left);
+      if (cur->right()) stack.pushBack(cur->right());
+      if (cur->left()) stack.pushBack(cur->left());
     }
     return true;
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
   bool preorderMorris(
-      Node<T>* node,
+      NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
-      ShouldBreak shouldBreak = defaultShouldBreak
+      ShouldBreak shouldBreak = {}
   ) const {
 
-    Node<T>* cur = node;
+    NodeType* cur = node;
     while (cur) {
-      if (!cur->left) {
+      if (!cur->left()) {
         cb(*cur);
         if (shouldBreak(*cur)) return false;
-        cur = cur->right;
+        cur = cur->right();
       } else {
-        Node<T>* predecessor = cur->left;
-        while (predecessor->right && predecessor->right != cur) predecessor = predecessor->right;
+        NodeType* predecessor = cur->left();
+        while (predecessor->right() && predecessor->right() != cur) predecessor = predecessor->right();
 
-        if (!predecessor->right) {
+        if (!predecessor->right()) {
           cb(*cur);
           if (shouldBreak(*cur)) return false;
-          predecessor->right = cur;
-          cur = cur->left;
+          predecessor->setRight(cur);
+          cur = cur->left();
         } else {
-          predecessor->right = nullptr;
-          cur = cur->right;
+          predecessor->setRight(nullptr);
+          cur = cur->right();
         }
       }
     }
     return true;
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
-  bool inorderRecursive(Node<T>* node, Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak) const {
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
+  bool inorderRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
     if (node == nullptr) return true;
 
-    if (!inorderRecursive(node->left, std::forward<Callback>(cb), shouldBreak)) return false;
+    if (!inorderRecursive(node->left(), std::forward<Callback>(cb), shouldBreak)) return false;
 
     cb(*node);
     if (shouldBreak(*node)) return false;
 
-    if (!inorderRecursive(node->right, std::forward<Callback>(cb), shouldBreak)) return false;
+    if (!inorderRecursive(node->right(), std::forward<Callback>(cb), shouldBreak)) return false;
 
     return true;
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
   bool inorderIterative(
-      Node<T>* node,
+      NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
-      ShouldBreak shouldBreak = defaultShouldBreak
+      ShouldBreak shouldBreak = {}
 
   ) const {
-    queue::Deque<Node<T>*> stack;
-    Node<T>* cur = node;
+    queue::Deque<NodeType*> stack;
+    NodeType* cur = node;
 
     while (cur || !stack.empty()) {
       while (cur) {
         stack.pushBack(cur);
-        cur = cur->left;
+        cur = cur->left();
       }
 
       cur = stack.back();
@@ -221,72 +239,77 @@ private:
       cb(*cur);
       if (shouldBreak(*cur)) return false;
 
-      cur = cur->right;
+      cur = cur->right();
     }
     return true;
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
   bool inorderMorris(
-      Node<T>* node,
+      NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
-      ShouldBreak shouldBreak = defaultShouldBreak
+      ShouldBreak shouldBreak = {}
   ) const {
-    Node<T>* cur = node;
+    NodeType* cur = node;
 
     while (cur) {
-      if (!cur->left) {
+      if (!cur->left()) {
         cb(*cur);
         if (shouldBreak(*cur)) return false;
-        cur = cur->right;
+        cur = cur->right();
       } else {
-        Node<T>* predecessor = cur->left;
-        while (predecessor->right && predecessor->right != cur) predecessor = predecessor->right;
+        NodeType* predecessor = cur->left();
+        while (predecessor->right() && predecessor->right() != cur) predecessor = predecessor->right();
 
-        if (!predecessor->right) {
-          predecessor->right = cur;
-          cur = cur->left;
+        if (!predecessor->right()) {
+          predecessor->setRight(cur);
+          cur = cur->left();
         } else {
-          predecessor->right = nullptr;
+          predecessor->setRight(nullptr);
           cb(*cur);
           if (shouldBreak(*cur)) return false;
-          cur = cur->right;
+          cur = cur->right();
         }
       }
     }
     return true;
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
-  bool
-  inorderReverseRecursive(Node<T>* node, Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak) const {
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
+  bool inorderReverseRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
     if (node == nullptr) return true;
 
-    if (!inorderReverseRecursive(node->right, std::forward<Callback>(cb), shouldBreak)) return false;
+    if (!inorderReverseRecursive(node->right(), std::forward<Callback>(cb), shouldBreak)) return false;
 
     cb(*node);
     if (shouldBreak(*node)) return false;
 
-    if (!inorderReverseRecursive(node->left, std::forward<Callback>(cb), shouldBreak)) return false;
+    if (!inorderReverseRecursive(node->left(), std::forward<Callback>(cb), shouldBreak)) return false;
 
     return true;
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
   bool inorderReverseIterative(
-      Node<T>* node,
+      NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
-      ShouldBreak shouldBreak = defaultShouldBreak
+      ShouldBreak shouldBreak = {}
   ) const {
     if (node == nullptr) return true;
 
-    Node<T>* cur = node;
-    queue::Deque<Node<T>*> stack;
+    NodeType* cur = node;
+    queue::Deque<NodeType*> stack;
 
     while (cur || !stack.empty()) {
       while (cur) {
         stack.pushBack(cur);
-        cur = cur->right;
+        cur = cur->right();
       }
 
       cur = stack.back();
@@ -295,77 +318,83 @@ private:
       cb(*cur);
       if (shouldBreak(*cur)) return false;
 
-      cur = cur->left;
+      cur = cur->left();
     }
     return true;
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
   bool inorderReverseMorris(
-      Node<T>* node,
+      NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
-      ShouldBreak shouldBreak = defaultShouldBreak
+      ShouldBreak shouldBreak = {}
   ) const {
-    Node<T>* cur = node;
+    NodeType* cur = node;
 
     while (cur != nullptr) {
-      if (!cur->right) {
+      if (!cur->right()) {
         cb(*cur);
         if (shouldBreak(*cur)) return false;
-        cur = cur->left;
+        cur = cur->left();
       } else {
-        Node<T>* predecessor = cur->right;
-        while (predecessor->left && predecessor->left != cur) predecessor = predecessor->left;
+        NodeType* predecessor = cur->right();
+        while (predecessor->left() && predecessor->left() != cur) predecessor = predecessor->left();
 
-        if (!predecessor->left) {
-          predecessor->left = cur;
-          cur = cur->right;
+        if (!predecessor->left()) {
+          predecessor->setLeft(cur);
+          cur = cur->right();
         } else {
-          predecessor->left = nullptr;
+          predecessor->setLeft(nullptr);
           cb(*cur);
           if (shouldBreak(*cur)) return false;
-          cur = cur->left;
+          cur = cur->left();
         }
       }
     }
     return true;
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
-  bool postorderRecursive(Node<T>* node, Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak) const {
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
+  bool postorderRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
     if (node == nullptr) return true;
 
-    if (!postorderRecursive(node->left, std::forward<Callback>(cb), shouldBreak)) return false;
+    if (!postorderRecursive(node->left(), std::forward<Callback>(cb), shouldBreak)) return false;
 
-    if (!postorderRecursive(node->right, std::forward<Callback>(cb), shouldBreak)) return false;
+    if (!postorderRecursive(node->right(), std::forward<Callback>(cb), shouldBreak)) return false;
 
     cb(*node);
 
     return !shouldBreak(*node);
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
+  template <
+      typename NodeType, std::invocable<NodeType&> Callback,
+      std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
   bool postorderIterative(
-      Node<T>* node,
+      NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
-      ShouldBreak shouldBreak = defaultShouldBreak
+      ShouldBreak shouldBreak = {}
   ) const {
     if (node == nullptr) return true;
 
-    queue::Deque<Node<T>*> s1{node};
-    queue::Deque<Node<T>*> s2;
+    queue::Deque<NodeType*> s1{node};
+    queue::Deque<NodeType*> s2;
 
     while (!s1.empty()) {
-      Node<T>* cur = s1.back();
+      NodeType* cur = s1.back();
       s1.popBack();
       s2.pushBack(cur);
 
-      if (cur->left) s1.pushBack(cur->left);
-      if (cur->right) s1.pushBack(cur->right);
+      if (cur->left()) s1.pushBack(cur->left());
+      if (cur->right()) s1.pushBack(cur->right());
     }
 
     while (!s2.empty()) {
-      Node<T>* cur = s2.back();
+      NodeType* cur = s2.back();
       s2.popBack();
 
       cb(*cur);
@@ -376,58 +405,58 @@ private:
   }
 
   // may be a bit less efficient in time complexity (compare to iterative/recursive approaches)
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
+  template <typename NodeType, std::invocable<NodeType&> Callback, std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
   bool postorderMorris( // NOLINT
-      Node<T>* node,
+      NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
-      ShouldBreak shouldBreak = defaultShouldBreak
+      ShouldBreak shouldBreak = {}
   ) const {
     if (node == nullptr) return true;
 
-    auto reversePath = [](Node<T>* from, Node<T>* to) {
-      Node<T>* prev = nullptr;
-      Node<T>* cur = from;
-      Node<T>* next = nullptr;
+    auto reversePath = [](NodeType* from, NodeType* to) {
+      NodeType* prev = nullptr;
+      NodeType* cur = from;
+      NodeType* next = nullptr;
       while (cur != to) {
-        next = cur->right;
-        cur->right = prev;
+        next = cur->right();
+        cur->setRight(prev);
         prev = cur;
         cur = next;
       }
-      cur->right = prev;
+      cur->setRight(prev);
     };
 
-    auto visitReverse = [&](Node<T>* from, Node<T>* to) {
+    auto visitReverse = [&](NodeType* from, NodeType* to) {
       reversePath(from, to);
-      Node<T>* cur = to;
+      NodeType* cur = to;
       while (true) {
         cb(*cur);
         if (shouldBreak(*cur)) return false;
         if (cur == from) break;
-        cur = cur->right;
+        cur = cur->right();
       }
       reversePath(to, from);
       return true;
     };
 
-    Node<T> dummy(0);
-    dummy.left = node;
-    Node<T>* cur = &dummy;
+    NodeType dummy(0);
+    dummy.setLeft(node);
+    NodeType* cur = &dummy;
 
     while (cur) {
-      if (!cur->left) {
-        cur = cur->right;
+      if (!cur->left()) {
+        cur = cur->right();
       } else {
-        Node<T>* predecessor = cur->left;
-        while (predecessor->right && predecessor->right != cur) predecessor = predecessor->right;
+        NodeType* predecessor = cur->left();
+        while (predecessor->right() && predecessor->right() != cur) predecessor = predecessor->right();
 
-        if (!predecessor->right) {
-          predecessor->right = cur;
-          cur = cur->left;
+        if (!predecessor->right()) {
+          predecessor->setRight(cur);
+          cur = cur->left();
         } else {
-          predecessor->right = nullptr;
-          if (!visitReverse(cur->left, predecessor)) return false;
-          cur = cur->right;
+          predecessor->setRight(nullptr);
+          if (!visitReverse(cur->left(), predecessor)) return false;
+          cur = cur->right();
         }
       }
     }
@@ -435,28 +464,28 @@ private:
   }
 
   template <
-      std::invocable<Node<T>&, size_t /* level, starts from 0 */> Callback,
-      std::predicate<Node<T>&, size_t /* level, starts from 0 */> ShouldBreak = DefaultBreakPredicate>
+      typename NodeType, std::invocable<NodeType&, size_t /* level, starts from 0 */> Callback,
+      std::predicate<NodeType&, size_t /* level, starts from 0 */> ShouldBreak = DefaultBreak<NodeType>>
   bool levelorderIterative(
-      Node<T>* node,
+      NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
-      ShouldBreak shouldBreak = defaultShouldBreak
+      ShouldBreak shouldBreak = {}
   ) const {
     if (node == nullptr) return true;
     size_t level = 0;
 
-    queue::Deque<Node<T>*> q{node};
+    queue::Deque<NodeType*> q{node};
     while (!q.empty()) {
       size_t levelSize = q.size();
       for (size_t i = 0; i < levelSize; ++i) {
-        Node<T>* cur = q.front();
+        NodeType* cur = q.front();
         q.popFront();
 
         cb(*cur, level);
         if (shouldBreak(*cur, level)) return false;
 
-        if (cur->left) q.pushBack(cur->left);
-        if (cur->right) q.pushBack(cur->right);
+        if (cur->left()) q.pushBack(cur->left());
+        if (cur->right()) q.pushBack(cur->right());
       }
       level++;
     }
@@ -509,8 +538,8 @@ private:
       const T& rootVal = *f.seqBegin;
       gsl::owner<Node<T>*> node = new Node<T>(rootVal);
       if (!f.parent) root = node;
-      else if (f.attachLeft) f.parent->left = node;
-      else f.parent->right = node;
+      else if (f.attachLeft) f.parent->setLeft(node);
+      else f.parent->setRight(node);
 
       if (inorderPos[rootVal].empty()) {
         throw std::invalid_argument("Please make sure the inorder and preorder sequences are correct.");
@@ -525,8 +554,8 @@ private:
       // left sub-tree
       st.push({f.inBegin, inRoot, std::next(f.seqBegin), std::next(f.seqBegin, leftSize + 1), node, true});
     }
-    if (m_root) clear();
-    m_root = root;
+    if (!empty()) clear();
+    setRoot(root);
   }
 
   template <typename Seq>
@@ -561,8 +590,8 @@ private:
       gsl::owner<Node<T>*> node = new Node<T>(rootVal);
 
       if (!f.parent) root = node;
-      else if (f.attachLeft) f.parent->left = node;
-      else f.parent->right = node;
+      else if (f.attachLeft) f.parent->setLeft(node);
+      else f.parent->setRight(node);
 
       if (inorderPos[rootVal].empty()) {
         throw std::invalid_argument("Please make sure the inorder and postorder sequences are correct.");
@@ -580,8 +609,8 @@ private:
           {std::next(inRoot), f.inEnd, std::next(f.seqBegin, leftSize), std::prev(f.seqEnd), node, false}
       );
     }
-    if (m_root) clear();
-    m_root = root;
+    if (!empty()) clear();
+    setRoot(root);
   }
 
   template <typename Seq>
@@ -621,8 +650,8 @@ private:
       gsl::owner<Node<T>*> node = new Node<T>(rootVal);
 
       if (!f.parent) root = node;
-      else if (f.attachLeft) f.parent->left = node;
-      else f.parent->right = node;
+      else if (f.attachLeft) f.parent->setLeft(node);
+      else f.parent->setRight(node);
 
       if (inorderPos[rootVal].empty()) {
         throw std::invalid_argument("Please make sure the inorder and levelorder sequences are correct.");
@@ -653,8 +682,8 @@ private:
       // right sub-tree
       st.push({rightInBegin, rightInEnd, rightLevel.begin(), rightLevel.end(), node, false});
     }
-    if (m_root) clear();
-    m_root = root;
+    if (!empty()) clear();
+    setRoot(root);
   }
 
   template <typename Seq>
@@ -674,12 +703,11 @@ private:
         node = new Node<T>(std::move(seq[idx].value()));
       }
 
-      node->left = self(self, (idx * 2) + 1);
-      node->right = self(self, (idx * 2) + 2);
+      node->setLeft(self(self, (idx * 2) + 1));
+      node->setRight(self(self, (idx * 2) + 2));
       return node;
     };
-
-    m_root = static_cast<gsl::owner<Node<T>*>>(buildTree(buildTree, 0));
+    setRoot(buildTree(buildTree, 0)); // NOLINT
   }
 
   template <typename Seq> void fromArrayRepresentationIterative(Seq&& seq) { // NOLINT
@@ -688,12 +716,12 @@ private:
     constexpr bool isSeqLRef = std::is_lvalue_reference_v<Seq>;
 
     if constexpr (isSeqLRef) {
-      m_root = new Node<T>(seq[0].value());
+      setRoot(new Node<T>(seq[0].value()));
     } else {
-      m_root = new Node<T>(std::move(seq[0].value()));
+      setRoot(new Node<T>(std::move(seq[0].value())));
     }
 
-    queue::Deque<std::pair<Node<T>*, size_t>> queue{{m_root, 0}};
+    queue::Deque<std::pair<Node<T>*, size_t>> queue{{root(), 0}};
 
     while (!queue.empty()) {
       auto [node, idx] = queue.front();
@@ -703,82 +731,81 @@ private:
 
       if (leftIdx < n && seq[leftIdx].has_value()) {
         if constexpr (isSeqLRef) {
-          node->left = new Node<T>(seq[leftIdx].value()); // NOLINT
+          node->setLeft(new Node<T>(seq[leftIdx].value()));
         } else {
-          node->left = new Node<T>(std::move(seq[leftIdx].value())); // NOLINT
+          node->setLeft(new Node<T>(std::move(seq[leftIdx].value())));
         }
-        queue.pushBack({node->left, leftIdx});
+        queue.pushBack({node->left(), leftIdx});
       }
 
       if (rightIdx < n && seq[rightIdx].has_value()) {
         if constexpr (isSeqLRef) {
-          node->right = new Node<T>(seq[rightIdx].value()); // NOLINT
+          node->setRight(new Node<T>(seq[rightIdx].value()));
         } else {
-          node->right = new Node<T>(std::move(seq[rightIdx].value())); // NOLINT
+          node->setRight(new Node<T>(std::move(seq[rightIdx].value())));
         }
-        queue.pushBack({node->right, rightIdx});
+        queue.pushBack({node->right(), rightIdx});
       }
     }
   }
 
-  virtual std::pair<bool, Node<T>*> eraseNode(Node<T>* target, Node<T>* parent) { // NOLINT
-    if (target == nullptr) return {false, parent};
-    Node<T>* newTree = parent;
+  // findFirstImpl is marked with const because it is internally used by the two overloads of findFirst,
+  // Node<T>* findFirst(const T& val) noexcept {}
+  // const Node<T>* findFirst(const T& val) const noexcept {}
+  virtual const Node<T>* findFirstImpl(const T& val) const noexcept {
+    const Node<T>* found = nullptr;
+    auto findNode = [&](const Node<T>& node) {
+      if (keyEqual(node.value(), val)) found = &node;
+    };
+    auto shouldBreak = [&](const Node<T>&) { return found != nullptr; };
 
-    if (!target->left && !target->right) {
-      if (parent && parent->left == target) parent->left = nullptr;
-      else if (parent && parent->right == target) parent->right = nullptr;
-      delete target; // NOLINT
+    levelorderTraverse(findNode, shouldBreak);
+    return found;
+  }
 
-    } else if (!target->left) { // only right child
-      if (parent == nullptr) {
-        newTree = target->right;
-      } else {
-        if (parent->left == target) parent->left = target->right;
-        else parent->right = target->right;
-      }
-      delete target;             // NOLINT
-    } else if (!target->right) { // only left child
-      if (parent == nullptr) {
-        newTree = target->left;
-      } else {
-        if (parent->left == target) parent->left = target->left;
-        else parent->right = target->left;
-      }
-      delete target; // NOLINT
-    } else {         // has both right and left
-      Node<T>* right = target->right;
-      Node<T>* cur = target->left;
-      while (cur->right) cur = cur->right;
-      cur->right = right;
+  // insert by level-order, filling the tree left to right
+  virtual Node<T>* insertImpl(const T& val) noexcept {
+    gsl::owner<Node<T>*> newNode = new Node<T>(val);
 
-      if (parent == nullptr) {
-        newTree = target->left;
-      } else {
-        if (parent->left == target) parent->left = target->left;
-        else parent->right = target->left;
-      }
-      delete target; // NOLINT
+    if (empty()) {
+      setRoot(newNode);
+      return newNode; // NOLINT
     }
-    return {true, newTree};
+
+    bool attached = false;
+    auto insertNode = [&](Node<T>& node) {
+      if (node.left() == nullptr) {
+        node.setLeft(newNode);
+        attached = true;
+        return;
+      }
+      if (node.right() == nullptr) {
+        node.setRight(newNode);
+        attached = true;
+        return;
+      }
+    };
+    auto shouldBreak = [&](Node<T>&) { return attached; };
+    levelorderTraverse(insertNode, shouldBreak);
+    return newNode;
   }
 
   void deepCopyTree(const BinaryTree& other) {
-    if (other.m_root == nullptr) return;
+    if (other.empty()) return;
 
-    m_root = new Node(other.m_root->value);
-    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{m_root, other.m_root}};
+    setRoot(new Node(other.root()->value()));
+    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{root(), other.root()}};
 
     while (!q.empty()) {
       auto [cur, otherCur] = q.front();
       q.popFront();
-      if (otherCur->left != nullptr) {
-        cur->left = new Node(otherCur->left->value); // NOLINT
-        q.pushBack({cur->left, otherCur->left});
+      if (otherCur->left() != nullptr) {
+        cur->setLeft(new Node(otherCur->left()->value()));
+        q.pushBack({cur->left(), otherCur->left()});
       }
-      if (otherCur->right != nullptr) {
-        cur->right = new Node(otherCur->right->value); // NOLINT
-        q.pushBack({cur->right, otherCur->right});
+      if (otherCur->right() != nullptr) {
+        cur->setRight(new Node(otherCur->right()->value()));
+        q.pushBack({cur->right(), otherCur->right()});
       }
     }
   }
@@ -798,8 +825,8 @@ public:
   }
 
   BinaryTree(BinaryTree&& other) noexcept
-      : m_hasher(std::move(other.m_hasher)), m_keyEqual(std::move(other.m_keyEqual)), m_root(other.m_root) {
-    other.m_root = static_cast<gsl::owner<Node<T>*>>(nullptr);
+      : m_hasher(std::move(other.m_hasher)), m_keyEqual(std::move(other.m_keyEqual)), m_root(other.root()) {
+    other.setRoot(nullptr);
   }
 
   BinaryTree& operator=(BinaryTree&& other) noexcept {
@@ -807,16 +834,23 @@ public:
     clear();
     m_hasher = std::move(other.m_hasher);
     m_keyEqual = std::move(other.m_keyEqual);
-    m_root = other.m_root;
-    other.m_root = static_cast<gsl::owner<Node<T>*>>(nullptr);
+    setRoot(other.root());
+    other.setRoot(nullptr);
     return *this;
   }
 
   virtual ~BinaryTree() noexcept { clear(); }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
-  bool inorderTraverse(Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak) const {
-    return inorderMorris(m_root, std::forward<Callback>(cb), shouldBreak);
+  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
+  bool inorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
+    return inorderMorris(root(), std::forward<Callback>(cb), shouldBreak);
+  }
+
+  template <
+      std::invocable<const Node<T>&> Callback,
+      std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
+  bool inorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
+    return inorderMorris(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
   /**
@@ -824,36 +858,77 @@ public:
    *        In BST, inorder is used to traverse the tree in a non-decreasing order,
    *        inorder-reverse can be used to traverse the tree in a non-increasing order.
    */
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
-  bool inorderReverseTraverse(Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak) const {
-    return inorderReverseMorris(m_root, std::forward<Callback>(cb), shouldBreak);
+  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
+  bool inorderReverseTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
+    return inorderReverseMorris(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
-  bool preorderTraverse(Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak) const {
-    return preorderMorris(m_root, std::forward<Callback>(cb), shouldBreak);
+  template <
+      std::invocable<const Node<T>&> Callback,
+      std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
+  bool inorderReverseTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
+    return inorderReverseMorris(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
-  bool postorderTraverse(Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak) const {
-    return postorderIterative(m_root, std::forward<Callback>(cb), shouldBreak);
+  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
+  bool preorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
+    return preorderMorris(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
-  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreakPredicate>
+  template <
+      std::invocable<const Node<T>&> Callback,
+      std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
+  bool preorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
+    return preorderMorris(root(), std::forward<Callback>(cb), shouldBreak);
+  }
+
+  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
+  bool postorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
+    return postorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
+  }
+
+  template <
+      std::invocable<const Node<T>&> Callback,
+      std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
+  bool postorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
+    return postorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
+  }
+
+  template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
   bool levelorderTraverse(
-      Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreak // NOLINT allow move-only callable
-  ) const {
+      Callback&& cb, ShouldBreak shouldBreak = {} // NOLINT allow move-only callable
+  ) {
     return levelorderTraverse(
         [&](Node<T>& node, size_t) { cb(node); }, [&](Node<T>& node, size_t) { return shouldBreak(node); }
     );
   }
 
   template <
+      std::invocable<const Node<T>&> Callback,
+      std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
+  bool levelorderTraverse(
+      Callback&& cb, ShouldBreak shouldBreak = {} // NOLINT allow move-only callable
+  ) const {
+    return levelorderTraverse(
+        [&](const Node<T>& node, size_t) { cb(node); },
+        [&](const Node<T>& node, size_t) { return shouldBreak(node); }
+    );
+  }
+
+  template <
       std::invocable<Node<T>&, size_t /* level, starts from 0 */> Callback,
       std::predicate<Node<T>&, size_t /* level, starts from 0 */> ShouldBreak =
-          DefaultBreakPredicateWithLevel>
-  bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = defaultShouldBreakWithLevel) const {
-    return levelorderIterative(m_root, std::forward<Callback>(cb), shouldBreak);
+          DefaultBreakWithLevel<Node<T>>>
+  bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
+    return levelorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
+  }
+
+  template <
+      std::invocable<const Node<T>&, size_t /* level, starts from 0 */> Callback,
+      std::predicate<const Node<T>&, size_t /* level, starts from 0 */> ShouldBreak =
+          DefaultBreakWithLevel<const Node<T>>>
+  bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
+    return levelorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
   template <typename Seq>
@@ -924,10 +999,10 @@ public:
   template <typename Seq>
     requires detail::RandomAccessOptionalSequence<T, Seq>
   void fromArrayRepresentation(Seq&& seq) {
-    if (m_root) clear();
+    if (!empty()) clear();
     size_t n = std::ranges::size(seq);
     if (n == 0 || !seq[0].has_value()) {
-      m_root = static_cast<gsl::owner<Node<T>*>>(nullptr);
+      setRoot(nullptr);
       return;
     }
     fromArrayRepresentationIterative(std::forward<Seq>(seq));
@@ -937,129 +1012,116 @@ public:
     fromArrayRepresentation(array::DynamicArray<std::optional<T>>(l));
   }
 
-  // insert by level-order, filling the tree left to right
-  virtual Node<T>* insert(const T& val) noexcept {
-    gsl::owner<Node<T>*> newNode = new Node<T>(val);
+  array::DynamicArray<Node<T>*> getArrayRepresentation() const {
+    array::DynamicArray<Node<T>*> res;
+    queue::Deque<Node<T>*> q{root()};
+    size_t treeHeight = height();
+    size_t level = 0;
 
-    if (m_root == nullptr) {
-      m_root = newNode;
-      return newNode; // NOLINT
+    while (!q.empty() && level < treeHeight) {
+      size_t levelSize = q.size();
+      for (size_t i = 0; i < levelSize; ++i) {
+        Node<T>* node = q.front();
+        q.popFront();
+        res.pushBack(node);
+        q.pushBack(node == nullptr ? nullptr : node->left());
+        q.pushBack(node == nullptr ? nullptr : node->right());
+      }
+      ++level;
     }
-    bool attached = false;
-
-    auto insertNode = [&](Node<T>& node) {
-      if (node.left == nullptr) {
-        node.left = newNode;
-        attached = true;
-        return;
-      }
-      if (node.right == nullptr) {
-        node.right = newNode;
-        attached = true;
-        return;
-      }
-    };
-    auto shouldBreak = [&](Node<T>&) { return attached; };
-    levelorderTraverse(insertNode, shouldBreak);
-    return newNode;
+    return res;
   }
 
-  virtual Node<T>* find(const T& val) const noexcept {
-    Node<T>* found = nullptr;
-    auto findNode = [&](Node<T>& node) {
-      std::cout << node.value << '\n';
-      if (m_keyEqual(node.value, val)) found = &node;
-    };
-    auto shouldBreak = [&](Node<T>&) { return found != nullptr; };
+  Node<T>* insert(const T& val) noexcept { return insertImpl(val); }
 
-    levelorderTraverse(findNode, shouldBreak);
-    return found;
+  Node<T>* findFirst(const T& val) noexcept { return const_cast<Node<T>*>(findFirstImpl(val)); }
+  const Node<T>* findFirst(const T& val) const noexcept { return findFirstImpl(val); }
+
+  virtual bool eraseNode(Node<T>* target) {
+    if (empty() || target == nullptr) return false;
+    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{root(), nullptr}};
+
+    while (!q.empty()) {
+      auto [node, parent] = q.front();
+      q.popFront();
+      if (node == target) return eraseNode(target, parent);
+
+      if (node->left() != nullptr) q.pushBack({node->left(), node});
+      if (node->right() != nullptr) q.pushBack({node->right(), node});
+    }
+    return false;
   }
 
   virtual bool eraseFirst(const T& val) {
-    if (m_root == nullptr) return false;
-
-    Node<T>* target = nullptr;
-    Node<T>* parent = nullptr;
-
-    queue::Deque<std::pair<Node<T>*, Node<T>*>> q;
-    q.pushBack({m_root, parent});
+    if (empty()) return false;
+    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{root(), nullptr}};
 
     while (!q.empty()) {
-      auto [cur, par] = q.front();
+      auto [cur, parent] = q.front();
       q.popFront();
 
-      if (m_keyEqual(cur->value, val)) {
-        target = cur;
-        parent = par;
-        break;
-      }
+      if (keyEqual(cur->value(), val)) return eraseNode(cur, parent);
 
-      if (cur->left) q.pushBack({cur->left, cur});
-      if (cur->right) q.pushBack({cur->right, cur});
+      if (cur->left() != nullptr) q.pushBack({cur->left(), cur});
+      if (cur->right() != nullptr) q.pushBack({cur->right(), cur});
     }
-
-    auto [erased, newTree] = eraseNode(target, parent);
-    if (erased && parent == nullptr) m_root = static_cast<gsl::owner<Node<T>*>>(newTree);
-    return erased;
+    return false;
   }
 
   virtual size_t eraseAll(const T& val) {
-    if (m_root == nullptr) return 0;
+    if (empty()) return 0;
 
     size_t count = 0;
-    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{m_root, nullptr}};
+    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{root(), nullptr}};
     array::DynamicArray<std::pair<Node<T>*, Node<T>*>> matches;
     while (!q.empty()) {
       auto [cur, parent] = q.front();
       q.popFront();
-      if (m_keyEqual(cur->value, val)) matches.pushBack({cur, parent});
-      if (cur->left) q.pushBack({cur->left, cur});
-      if (cur->right) q.pushBack({cur->right, cur});
+      if (keyEqual(cur->value(), val)) matches.pushBack({cur, parent});
+      if (cur->left() != nullptr) q.pushBack({cur->left(), cur});
+      if (cur->right() != nullptr) q.pushBack({cur->right(), cur});
     }
 
     // process child nodes first to avoid dangling parent
     for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
       auto [cur, parent] = *it;
-      auto [erased, newTree] = eraseNode(cur, parent);
-      if (erased) count++;
-      if (erased && parent == nullptr) m_root = static_cast<gsl::owner<Node<T>*>>(newTree);
+      if (eraseNode(cur, parent)) count++;
     }
     return count;
   }
 
   void clear() noexcept {
-    if (m_root == nullptr) return;
+    if (empty()) return;
     auto deleteNode = [](Node<T>& node) {
       delete &node; // NOLINT
     };
     postorderTraverse(deleteNode);
-    m_root = static_cast<gsl::owner<Node<T>*>>(nullptr);
+    setRoot(nullptr);
   }
 
   [[nodiscard]] bool heightBalanced() const noexcept {
-    if (m_root == nullptr) return true;
+    if (empty()) return true;
     hashmap::HashMap<Node<T>*, int> height;
 
     bool balanced = true;
 
-    auto isBalanced = [&](Node<T>& node) {
-      int leftHeight = height[node.left];
-      int rightHeight = height[node.right];
+    auto isBalanced = [&](const Node<T>& node) {
+      int leftHeight = height[node.left()];
+      int rightHeight = height[node.right()];
       if (std::abs(leftHeight - rightHeight) > 1) balanced = false;
       height[&node] = 1 + std::max(leftHeight, rightHeight);
     };
 
-    auto shouldBreak = [&](Node<T>&) { return !balanced; };
+    auto shouldBreak = [&](const Node<T>&) { return !balanced; };
 
     postorderTraverse(isBalanced, shouldBreak);
     return balanced;
   }
 
   [[nodiscard]] bool complete() const noexcept {
-    if (m_root == nullptr) return true;
+    if (empty()) return true;
     queue::Deque<Node<T>*> queue;
-    queue.pushBack(m_root);
+    queue.pushBack(root());
     bool seenNull = false;
 
     while (!queue.empty()) {
@@ -1068,8 +1130,8 @@ public:
 
       if (node != nullptr) {
         if (seenNull) return false;
-        queue.pushBack(node->left);
-        queue.pushBack(node->right);
+        queue.pushBack(node->left());
+        queue.pushBack(node->right());
       } else {
         seenNull = true;
       }
@@ -1078,18 +1140,18 @@ public:
   }
 
   [[nodiscard]] size_t height() const noexcept {
-    if (m_root == nullptr) return 0;
+    if (empty()) return 0;
     size_t height = 0;
-    queue::Deque<Node<T>*> q{m_root};
+    queue::Deque<const Node<T>*> q{root()};
 
     while (!q.empty()) {
       size_t levelSize = q.size();
 
       for (size_t i = 0; i < levelSize; ++i) {
-        Node<T>* node = q.front();
+        const Node<T>* node = q.front();
         q.popFront();
-        if (node->left != nullptr) q.pushBack(node->left);
-        if (node->right != nullptr) q.pushBack(node->right);
+        if (node->left() != nullptr) q.pushBack(node->left());
+        if (node->right() != nullptr) q.pushBack(node->right());
       }
       ++height;
     }
@@ -1097,22 +1159,34 @@ public:
   }
 
   [[nodiscard]] bool full() const noexcept {
-    if (m_root == nullptr) return true;
+    if (empty()) return true;
     bool isFull = true;
 
-    auto checkIsFull = [&](Node<T>& node) {
-      bool hasLeft = node.left != nullptr;
-      bool hasRight = node.right != nullptr;
+    auto checkIsFull = [&](const Node<T>& node) {
+      bool hasLeft = node.left() != nullptr;
+      bool hasRight = node.right() != nullptr;
       if (hasLeft ^ hasRight) isFull = false;
     };
 
-    auto shouldBreak = [&](Node<T>&) { return !isFull; };
+    auto shouldBreak = [&](const Node<T>&) { return !isFull; };
     levelorderTraverse(checkIsFull, shouldBreak);
     return isFull;
   }
 
-  [[nodiscard]] constexpr bool empty() const noexcept { return m_root == nullptr; }
+  [[nodiscard]] constexpr bool empty() const noexcept { return root() == nullptr; }
 
-  [[nodiscard]] constexpr Node<T>* root() const noexcept { return m_root; } // NOLINT
+  [[nodiscard]] constexpr Node<T>* root() noexcept { return m_root; }             // NOLINT
+  [[nodiscard]] constexpr const Node<T>* root() const noexcept { return m_root; } // NOLINT
+
+  void swap(BinaryTree& other) noexcept {
+    std::swap(m_root, other.m_root);
+    std::swap(m_hasher, other.m_hasher);
+    std::swap(m_keyEqual, other.m_keyEqual);
+  }
 };
+
+template <typename T, typename Hasher, typename KeyEqual>
+void swap(BinaryTree<T, Hasher, KeyEqual>& a, BinaryTree<T, Hasher, KeyEqual>& b) noexcept { // for ADL
+  a.swap(b);
+}
 } // namespace tree

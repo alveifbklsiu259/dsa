@@ -39,8 +39,8 @@ private:
 
   template <typename T> size_t findMinNodeSize(const BinaryTree<T>& tree) const {
     size_t minNodeSize = m_minNodeSize;
-    auto checkSize = [&](Node<T>& node) {
-      minNodeSize = std::max(minNodeSize, detail::genericToString(node.value).size());
+    auto checkSize = [&](const Node<T>& node) {
+      minNodeSize = std::max(minNodeSize, detail::genericToString(node.value()).size());
     };
     tree.levelorderTraverse(checkSize);
     return minNodeSize;
@@ -105,15 +105,15 @@ private:
   }
 
   template <detail::Streamable T>
-  std::string formatValue(Node<T>* node, size_t padSize, const std::string& emptyNodeValue) {
+  std::string formatValue(const Node<T>* node, size_t padSize, const std::string& emptyNodeValue) {
     if (node == nullptr) return std::format("{:->{}}", emptyNodeValue, padSize);
 
     if constexpr (std::is_integral_v<T>) {
-      return std::format("{:0{}d}", node->value, padSize);
+      return std::format("{:0{}d}", node->value(), padSize);
     } else if constexpr (std::is_floating_point_v<T>) {
-      return std::format("{:0{}f}", node->value, padSize);
+      return std::format("{:0{}f}", node->value(), padSize);
     }
-    return std::format("{:->{}}", detail::genericToString(node->value), padSize);
+    return std::format("{:->{}}", detail::genericToString(node->value()), padSize);
   }
 
 public:
@@ -166,7 +166,7 @@ public:
 
   template <detail::Streamable T>
   void visualize(const BinaryTree<T>& tree, std::optional<bool> displayEmptyNode = std::nullopt) {
-    Node<T>* root = tree.root();
+    const Node<T>* root = tree.root();
     if (root == nullptr) {
       std::cout << "Tree is empty" << '\n';
       return;
@@ -183,8 +183,10 @@ public:
     size_t halfNodeGap = minNodeGap / 2;
 
     size_t treeHeight = tree.height();
-    queue::Deque<Node<T>*> q{root};
+    queue::Deque<const Node<T>*> q{root};
     size_t level = 0;
+
+    std::cout << '\n';
     // make the tree a perfect tree i.e. no empty node except for the last level
     // to do that, push nullptr (left, right) to the queue even though the current node is nullptr
     while (!q.empty()) {
@@ -203,17 +205,17 @@ public:
 
       for (size_t nodeIdx = 0; nodeIdx < levelCapacity; ++nodeIdx) {
         bool isLevelLastNode = nodeIdx == levelCapacity - 1;
-        Node<T>* node = q.front();
+        const Node<T>* node = q.front();
         q.popFront();
 
         std::cout << formatValue(node, minNodeSize, emptyNodeValue);
 
         if (!isLevelLastNode) std::cout << std::string(interNodeGap, ' ');
-        q.pushBack(node == nullptr ? nullptr : node->left);
-        q.pushBack(node == nullptr ? nullptr : node->right);
+        q.pushBack(node == nullptr ? nullptr : node->left());
+        q.pushBack(node == nullptr ? nullptr : node->right());
 
-        hasLeft.pushBack(node != nullptr && node->left != nullptr);
-        hasRight.pushBack(node != nullptr && node->right != nullptr);
+        hasLeft.pushBack(node != nullptr && node->left() != nullptr);
+        hasRight.pushBack(node != nullptr && node->right() != nullptr);
       }
 
       std::cout << '\n';

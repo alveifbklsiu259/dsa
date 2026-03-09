@@ -7,6 +7,7 @@
 #include "data_structure/queue/priority_queue.hpp"
 #include "data_structure/queue/static_queue.hpp"
 #include "data_structure/stack/dynamic_stack.hpp"
+#include "data_structure/tree/binary_search_tree.hpp"
 #include "data_structure/tree/binary_tree.hpp"
 #include "data_structure/tree/node.hpp"
 #include "data_structure/tree/tree-visualizer.hpp"
@@ -49,11 +50,9 @@ struct TaskHasher {
     return h1 ^ (h2 << 1);
   }
 };
-
 struct TaskEqual {
   bool operator()(const Task& a, const Task& b) const noexcept { return a == b; }
 };
-
 std::unordered_map<Task, int, TaskHasher, TaskEqual> m;
 struct TaskCompare {
   bool operator()(const Task& lhs, const Task& rhs) const {
@@ -61,49 +60,34 @@ struct TaskCompare {
     // returns true if lhs < rhs → max heap
   }
 };
-class Solution {
-public:
-  std::vector<std::string> letterCombinations(std::string digits) {
-    std::vector<std::string> res;
-    size_t n = digits.size();
-    if (n == 0) return res;
-    std::string cur;
-    std::unordered_map<char, std::string> mapping{{'2', "abc"}, {'3', "def"},  {'4', "ghi"}, {'5', "jkl"},
-                                                  {'6', "mno"}, {'7', "pqrs"}, {'8', "tuv"}, {'9', "wxyz"}};
-    std::function<void(size_t idx)> backtrack = [&](size_t idx) {
-      if (cur.size() == n) {
-        res.emplace_back(cur);
-        return;
-      }
-      std::string letters = mapping[digits[idx]];
-      for (char c : letters) {
-        cur.push_back(c);
-        backtrack(idx + 1);
-        cur.pop_back();
-      }
-    };
-    backtrack(0);
-    return res;
+
+void foo(tree::Node<int>& node) { std::cout << node.value() << ' '; };
+void baz(tree::Node<int>& node, size_t level) { std::cout << node.value() << ' '; };
+void bar(tree::Node<Task>& node) { std::cout << node.value() << ' '; };
+
+struct Base {
+  void foo() {
+    std::cout << "Base::foo calling bar()...\n";
+    bar(); // virtual call
+  }
+
+  virtual void bar() { std::cout << "Base::bar\n"; }
+};
+
+struct Derived : public Base {
+  void bar() override { std::cout << "Derived::bar\n"; }
+
+  void baz() {
+    std::cout << "Derived::baz calling foo()...\n";
+    foo(); // calls Base::foo, which calls bar()
   }
 };
 
-void foo(tree::Node<int>& node) { std::cout << node.value << ' '; };
-void baz(tree::Node<int>& node, size_t level) { std::cout << node.value << ' '; };
-void bar(tree::Node<Task>& node) { std::cout << node.value << ' '; };
 int main() {
-  std::string s;
-  std::array<int, 3> a{1, 2, 3};
-  int values[3]{1, 2, 3};
-  int* values2 = new int[3]{1, 2, 3};
-
   array::DynamicArray<int> preorder{9, 9, 20, 15, 7};  // root -> left -> right
   array::DynamicArray<int> inorder{9, 9, 15, 20, 7};   // left -> root -> right
   array::DynamicArray<int> postorder{9, 15, 7, 20, 9}; // left -> right -> root
   array::DynamicArray<int> levelorder{9, 9, 20, 15, 7};
-  // array::DynamicArray<int> inorder{4, 2, 5, 1, 3};
-  // array::DynamicArray<int> levelorder{1, 2, 3, 4, 5};
-  // array::DynamicArray<int> inorder{2, 1, 3};
-  // array::DynamicArray<int> levelorder{1, 2, 3};
 
   //   9
   //  / \
@@ -111,24 +95,6 @@ int main() {
   //    /  \
   //   15   7
   //
-  // std::unordered_map<int, int>();
-  // t.fromInPre(inorder, preorder);
-  // t.fromInPost(inorder, postorder);
-  // std::vector<std::optional<int>> seq = {
-  //     1,         // root
-  //     2, 3,      // level 1
-  //     4, 5, 6, 7 // level 2
-  // };
-  // array::DynamicArray<std::optional<int>> seq = {
-  //     1,         // root
-  //     2, 3,      // level 1
-  //     4, 5, 6, 7 // level 2
-  // };
-  //       1
-  //    /     \
-  //   2       3
-  //  / \     / \
-  // 4   5   6   7
   array::DynamicArray<std::optional<int>> seq = {
       1,         // root
       2, 3,      // level 1
@@ -139,30 +105,24 @@ int main() {
   //   2       3
   //  / \     / \
   // 2   3   1   7
-
-  // array::DynamicArray<std::optional<int>> seq = {
-  //     10,                                // root
-  //     20,           30,                  // level 1
-  //     std::nullopt, 40, std::nullopt, 70 // level 2
-  // };
-  //      10
-  //   /      \
-  // 20        30
-  //  \          \
-  //  40          70
-
-  // t.fromInLevel(inorder, {1, 9, 2});
-  // std::vector<std::optional<int>> s{1, 2, 3};
-  // array::DynamicArray<std::optional<int>> s{1, std::nullopt, 3};
-  // t.fromCompleteTree({1, std::nullopt, 3, std::nullopt, std::nullopt, 4, 5});
   tree::BinaryTree<int> t;
+  // tree::BinarySearchTree<int> t;
   const auto& null = std::nullopt;
-  t.fromArrayRepresentation({1, null, 1, null, null, -4, null, null, null, null, null, 5, 6, null, null});
-  // t.fromArrayRepresentation({1, 2, 3, 4, 5, 6});
-  // t.fromInPre({2, 1}, {1, 2});
-  // t.insert(3);
-  // t.insert(4);
-  // t.insert(5);
+  // t.fromArrayRepresentation({1, null, 1, null, null, -4, null, null, null, null, null, 5, 6, null, null});
+  t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70, null, null, 25, null, 30, 30, 30});
+  // t.insert(1);
+  // t.insert(1);
+  // t.insert(1);
+  // t.insert(1);
+  // t.insert(1);
+  // t.insert(1);
+  // t.insert(1);
+  // t.fromInPre({1, 2}, {2, 1});
+  t.eraseFirst(40);
+  t.eraseFirst(20);
+  t.eraseAll(30);
+  // auto found = t.findFirst(30);
+  // t.eraseNode(found);
   std::cout << "\ninorder (left -> root -> right): \n";
   t.inorderTraverse(foo);
   std::cout << "\ninorder reverse (right -> root -> left): \n";
@@ -173,35 +133,11 @@ int main() {
   t.postorderTraverse(foo);
   std::cout << "\nlevelorder: \n";
   t.levelorderTraverse(baz);
-  std::cout << '\n';
-
   tree::TreeVisualizer tv;
   tv.visualize(t, true);
-  // auto* found = t.find(1);
-  // if (found != nullptr) std::cout << "Found! the value is: " << found->value << '\n';
-
-  // tree::BinaryTree<Task, TaskHasher, TaskEqual> t;
-  // const auto& null = std::nullopt;
-  // // t.fromArrayRepresentation({1, null, 3, null, null, 4, null, null, null, null, null, 5, 6, null,
-  // null}); t.fromArrayRepresentation(
-  //     {Task{"a", 1}, null, Task{"c", 3}, null, null, Task{"d", 4}, null, null, null, null, null, Task{"e",
-  //     5},
-  //      Task{"f", 6}, null, null}
-  // );
-  // std::cout << "\ninorder: \n";
-  // t.inorderTraverse(bar);
-  // std::cout << "\npreorder: \n";
-  // t.preorderTraverse(bar);
-  // std::cout << "\npostorder: \n";
-  // t.postorderTraverse(bar);
-  // std::cout << "\nlevelorder: \n";
-  // t.levelorderTraverse(bar);
   // std::cout << '\n';
-  //
-  // auto* found = t.find(Task{"a", 1});
-  // if (found != nullptr) std::cout << "Found! the value is: " << found->value << '\n';
-  // std::cout << '\n';
-  // std::cout << std::boolalpha << t.isHeightBalanced() << '\n';
+  // auto found = t.findFirst(20);
+  // std::cout << found->value() << '\n';
 
   // TODO:
   // should we add
