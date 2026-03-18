@@ -33,6 +33,8 @@ template <
 class BinarySearchTree : public BinaryTree<T, Hasher, KeyEqual> {
 private:
   Compare m_compare;
+  using ConstNodeWithParent =
+      typename BinaryTree<T, Hasher, KeyEqual>::template NodeWithParent<const Node<T>*>;
 
   /**
    * Decide whether a value should be placed in or searched via the right subtree.
@@ -49,47 +51,58 @@ private:
     return !m_compare(val, node->value());
   }
 
-  const Node<T>* findFirstImpl(const T& val) const noexcept override {
+  ConstNodeWithParent findFirstWithParent(const T& val) const noexcept override {
+    if (this->empty()) return {};
     const Node<T>* cur = this->root();
+    const Node<T>* parent = nullptr;
 
     while (cur != nullptr) {
-      if (this->keyEqual(cur->value(), val)) return cur;
-
+      if (this->keyEqual(cur->value(), val)) return {cur, parent};
+      parent = cur;
       if (shouldGoRight(val, cur)) {
         cur = cur->right();
       } else {
         cur = cur->left();
       }
     }
-    return nullptr;
+    return {};
   }
 
-  Node<T>* insertImpl(const T& val) noexcept override {
-    gsl::owner<Node<T>*> newNode = new Node<T>(val);
+  ConstNodeWithParent findByNode(const Node<T>* target) const noexcept override {
+    if (this->empty() || target == nullptr) return {};
+    const Node<T>* cur = this->root();
+    const Node<T>* parent = nullptr;
 
-    if (this->root() == nullptr) {
-      this->setRoot(newNode);
-      return newNode; // NOLINT
-    }
-
-    Node<T>* cur = this->root();
-
-    while (true) {
-      if (shouldGoRight(val, cur)) {
-        if (cur->right() == nullptr) {
-          cur->setRight(newNode);
-          break;
-        }
+    while (cur != nullptr) {
+      if (cur == target) return {cur, parent};
+      parent = cur;
+      if (shouldGoRight(target->value(), cur)) {
         cur = cur->right();
       } else {
-        if (cur->left() == nullptr) {
-          cur->setLeft(newNode);
-          break;
-        }
         cur = cur->left();
       }
     }
-    return newNode;
+    return {};
+  }
+
+  array::DynamicArray<ConstNodeWithParent> findAllWithParent(const T& val) const noexcept override {
+    const Node<T>* cur = this->root();
+    if (cur == nullptr) return 0;
+
+    const Node<T>* parent = nullptr;
+    size_t count = 0;
+    array::DynamicArray<ConstNodeWithParent> matches;
+
+    while (cur != nullptr) {
+      if (this->keyEqual(cur->value(), val)) matches.pushBack({cur, parent});
+      parent = cur;
+      if (shouldGoRight(val, cur)) {
+        cur = cur->right();
+      } else {
+        cur = cur->left();
+      }
+    }
+    return matches;
   }
 
 public:
@@ -121,67 +134,32 @@ public:
 
   ~BinarySearchTree() noexcept override = default;
 
-  // maybe findLast, eraseLast
+  Node<T>* insert(const T& val) noexcept override {
+    gsl::owner<Node<T>*> newNode = new Node<T>(val);
 
-  bool eraseNode(Node<T>* target) override {
-    if (target == nullptr) return false;
+    if (this->root() == nullptr) {
+      this->setRoot(newNode);
+      return newNode; // NOLINT
+    }
+
     Node<T>* cur = this->root();
-    Node<T>* parent = nullptr;
 
-    while (cur != nullptr) {
-      if (cur == target) return eraseNode(target, parent);
-      parent = cur;
-      if (shouldGoRight(target->value(), cur)) {
+    while (true) {
+      if (shouldGoRight(val, cur)) {
+        if (cur->right() == nullptr) {
+          cur->setRight(newNode);
+          break;
+        }
         cur = cur->right();
       } else {
+        if (cur->left() == nullptr) {
+          cur->setLeft(newNode);
+          break;
+        }
         cur = cur->left();
       }
     }
-    return false;
-  }
-
-  // maybe we can have a virtual std::pari<found, parent> findNodeParent(node) instead to use in all erase
-  // methods
-  bool eraseFirst(const T& val) override {
-    Node<T>* cur = this->root();
-    Node<T>* parent = nullptr;
-
-    while (cur != nullptr) {
-      if (this->keyEqual(val, cur->value)) return eraseNode(cur, parent);
-      parent = cur;
-      if (shouldGoRight(val, cur)) {
-        cur = cur->right;
-      } else {
-        cur = cur->left;
-      }
-    }
-    return false;
-  }
-
-  size_t eraseAll(const T& val) override {
-    Node<T>* cur = this->root();
-    if (cur == nullptr) return 0;
-
-    Node<T>* parent = nullptr;
-    size_t count = 0;
-    array::DynamicArray<std::pair<Node<T>*, Node<T>*>> matches;
-
-    while (cur != nullptr) {
-      if (keyEqual(cur->value(), val)) matches.pushBack({cur, parent});
-      parent = cur;
-      if (shouldGoRight(val, cur)) {
-        cur = cur->right();
-      } else {
-        cur = cur->left();
-      }
-    }
-
-    // process child nodes first to avoid dangling parent
-    for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
-      auto [cur, parent] = *it;
-      if (eraseNode(cur, parent)) count++;
-    }
-    return count;
+    return newNode;
   }
 };
 } // namespace tree

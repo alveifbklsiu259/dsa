@@ -16,8 +16,12 @@ namespace tree {
 
 // maybe consider an interface that all trees implement
 
+// maybe findLast, eraseLast
 // maybe we can have different begin/end for inorder/preorder... by using the traversal methods we already
 // have
+
+// serialize/deserialize (https://leetcode.com/explore/learn/card/data-structure-tree/133/conclusion/995/),
+// just a variant of to/fromArrayRepresentation
 
 // also check priority queue, should we make left,right, parent constexpr?
 
@@ -109,6 +113,12 @@ protected:
     delete target; // NOLINT;
     return true;
   }
+
+  template <typename Ptr> class NodeWithParent {
+  public:
+    Ptr target = nullptr;
+    Ptr parent = nullptr;
+  };
 
 private:
   // using NodeType for both Node<T> and const Node<T>
@@ -749,52 +759,51 @@ private:
     }
   }
 
-  // findFirstImpl is marked with const because it is internally used by the two overloads of findFirst,
-  // Node<T>* findFirst(const T& val) noexcept {}
-  // const Node<T>* findFirst(const T& val) const noexcept {}
-  virtual const Node<T>* findFirstImpl(const T& val) const noexcept {
-    const Node<T>* found = nullptr;
-    auto findNode = [&](const Node<T>& node) {
-      if (keyEqual(node.value(), val)) found = &node;
-    };
-    auto shouldBreak = [&](const Node<T>&) { return found != nullptr; };
+  virtual NodeWithParent<const Node<T>*> findFirstWithParent(const T& val) const noexcept {
+    if (empty()) return {};
+    queue::Deque<std::pair<const Node<T>*, const Node<T>*>> q{{root(), nullptr}};
 
-    levelorderTraverse(findNode, shouldBreak);
-    return found;
+    while (!q.empty()) {
+      auto [node, parent] = q.front();
+      q.popFront();
+      if (keyEqual(node->value(), val)) return {node, parent};
+
+      if (node->left() != nullptr) q.pushBack({node->left(), node});
+      if (node->right() != nullptr) q.pushBack({node->right(), node});
+    }
+    return {};
   }
 
-  // insert by level-order, filling the tree left to right
-  virtual Node<T>* insertImpl(const T& val) noexcept {
-    gsl::owner<Node<T>*> newNode = new Node<T>(val);
+  NodeWithParent<Node<T>*> findFirstWithParent(const T& val) noexcept {
+    auto res = static_cast<const tree::BinaryTree<T, Hasher, KeyEqual>*>(this)->findFirstWithParent(val);
+    return {const_cast<Node<T>*>(res.target), const_cast<Node<T>*>(res.parent)};
+  }
 
-    if (empty()) {
-      setRoot(newNode);
-      return newNode; // NOLINT
+  virtual NodeWithParent<const Node<T>*> findByNode(const Node<T>* target) const noexcept {
+    if (empty() || target == nullptr) return {};
+    queue::Deque<std::pair<const Node<T>*, const Node<T>*>> q{{root(), nullptr}};
+
+    while (!q.empty()) {
+      auto [node, parent] = q.front();
+      q.popFront();
+      if (node == target) return {target, parent};
+
+      if (node->left() != nullptr) q.pushBack({node->left(), node});
+      if (node->right() != nullptr) q.pushBack({node->right(), node});
     }
+    return {};
+  }
 
-    bool attached = false;
-    auto insertNode = [&](Node<T>& node) {
-      if (node.left() == nullptr) {
-        node.setLeft(newNode);
-        attached = true;
-        return;
-      }
-      if (node.right() == nullptr) {
-        node.setRight(newNode);
-        attached = true;
-        return;
-      }
-    };
-    auto shouldBreak = [&](Node<T>&) { return attached; };
-    levelorderTraverse(insertNode, shouldBreak);
-    return newNode;
+  NodeWithParent<Node<T>*> findByNode(Node<T>* target) noexcept {
+    auto res = static_cast<const tree::BinaryTree<T, Hasher, KeyEqual>*>(this)->findByNode(target);
+    return {const_cast<Node<T>*>(res.target), const_cast<Node<T>*>(res.parent)};
   }
 
   void deepCopyTree(const BinaryTree& other) {
     if (other.empty()) return;
 
     setRoot(new Node(other.root()->value()));
-    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{root(), other.root()}};
+    queue::Deque<std::pair<Node<T>*, const Node<T>*>> q{{root(), other.root()}};
 
     while (!q.empty()) {
       auto [cur, otherCur] = q.front();
@@ -808,6 +817,36 @@ private:
         q.pushBack({cur->right(), otherCur->right()});
       }
     }
+  }
+
+  // find by level-order
+  virtual array::DynamicArray<NodeWithParent<const Node<T>*>> findAllWithParent(const T& val) const noexcept {
+    if (empty()) return {};
+    queue::Deque<std::pair<const Node<T>*, const Node<T>*>> q{{root(), nullptr}};
+    array::DynamicArray<NodeWithParent<const Node<T>*>> matches;
+
+    while (!q.empty()) {
+      auto [node, parent] = q.front();
+      q.popFront();
+      if (keyEqual(node->value(), val)) matches.pushBack({node, parent});
+
+      if (node->left() != nullptr) q.pushBack({node->left(), node});
+      if (node->right() != nullptr) q.pushBack({node->right(), node});
+    }
+    return matches;
+  }
+
+  array::DynamicArray<NodeWithParent<Node<T>*>> findAllWithParent(const T& val) noexcept {
+    array::DynamicArray<NodeWithParent<const Node<T>*>> matches =
+        static_cast<const tree::BinaryTree<T, Hasher, KeyEqual>*>(this)->findAllWithParent(val);
+
+    size_t n = matches.size();
+    array::DynamicArray<NodeWithParent<Node<T>*>> res;
+    res.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      res.emplaceBack(const_cast<Node<T>*>(matches[i].target), const_cast<Node<T>*>(matches[i].parent));
+    }
+    return res;
   }
 
 public:
@@ -1032,55 +1071,56 @@ public:
     return res;
   }
 
-  Node<T>* insert(const T& val) noexcept { return insertImpl(val); }
+  // insert by level-order, filling the tree left to right
+  virtual Node<T>* insert(const T& val) noexcept {
+    gsl::owner<Node<T>*> newNode = new Node<T>(val);
 
-  Node<T>* findFirst(const T& val) noexcept { return const_cast<Node<T>*>(findFirstImpl(val)); }
-  const Node<T>* findFirst(const T& val) const noexcept { return findFirstImpl(val); }
-
-  virtual bool eraseNode(Node<T>* target) {
-    if (empty() || target == nullptr) return false;
-    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{root(), nullptr}};
-
-    while (!q.empty()) {
-      auto [node, parent] = q.front();
-      q.popFront();
-      if (node == target) return eraseNode(target, parent);
-
-      if (node->left() != nullptr) q.pushBack({node->left(), node});
-      if (node->right() != nullptr) q.pushBack({node->right(), node});
+    if (empty()) {
+      setRoot(newNode);
+      return newNode; // NOLINT
     }
-    return false;
+
+    bool attached = false;
+    auto insertNode = [&](Node<T>& node) {
+      if (node.left() == nullptr) {
+        node.setLeft(newNode);
+        attached = true;
+        return;
+      }
+      if (node.right() == nullptr) {
+        node.setRight(newNode);
+        attached = true;
+        return;
+      }
+    };
+    auto shouldBreak = [&](Node<T>&) { return attached; };
+    levelorderTraverse(insertNode, shouldBreak);
+    return newNode;
+  }
+
+  Node<T>* findFirst(const T& val) noexcept {
+    return const_cast<Node<T>*>(static_cast<const BinaryTree*>(this)->findFirst(val));
+  }
+
+  const Node<T>* findFirst(const T& val) const noexcept {
+    NodeWithParent result = findFirstWithParent(val);
+    return result.target;
+  }
+
+  // maybe we can use the hook pattern instead of making them virtual
+  virtual bool eraseNode(Node<T>* target) {
+    auto [_target, parent] = findByNode(target);
+    return eraseNode(target, parent);
   }
 
   virtual bool eraseFirst(const T& val) {
-    if (empty()) return false;
-    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{root(), nullptr}};
-
-    while (!q.empty()) {
-      auto [cur, parent] = q.front();
-      q.popFront();
-
-      if (keyEqual(cur->value(), val)) return eraseNode(cur, parent);
-
-      if (cur->left() != nullptr) q.pushBack({cur->left(), cur});
-      if (cur->right() != nullptr) q.pushBack({cur->right(), cur});
-    }
-    return false;
+    auto [target, parent] = findFirstWithParent(val);
+    return eraseNode(target, parent);
   }
 
   virtual size_t eraseAll(const T& val) {
-    if (empty()) return 0;
-
+    array::DynamicArray<NodeWithParent<Node<T>*>> matches = findAllWithParent(val);
     size_t count = 0;
-    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{root(), nullptr}};
-    array::DynamicArray<std::pair<Node<T>*, Node<T>*>> matches;
-    while (!q.empty()) {
-      auto [cur, parent] = q.front();
-      q.popFront();
-      if (keyEqual(cur->value(), val)) matches.pushBack({cur, parent});
-      if (cur->left() != nullptr) q.pushBack({cur->left(), cur});
-      if (cur->right() != nullptr) q.pushBack({cur->right(), cur});
-    }
 
     // process child nodes first to avoid dangling parent
     for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
@@ -1171,6 +1211,21 @@ public:
     auto shouldBreak = [&](const Node<T>&) { return !isFull; };
     levelorderTraverse(checkIsFull, shouldBreak);
     return isFull;
+  }
+
+  [[nodiscard]] bool symmetric() const noexcept {
+    if (root() == nullptr) return true;
+    queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{root()->left(), root()->right()}};
+
+    while (!q.empty()) {
+      auto [a, b] = q.front();
+      q.popFront();
+      if (a == nullptr && b == nullptr) continue;
+      if (a == nullptr || b == nullptr || a->value() != b->value()) return false;
+      q.pushBack({a->left(), b->right()});
+      q.pushBack({a->right(), b->left()});
+    }
+    return true;
   }
 
   [[nodiscard]] constexpr bool empty() const noexcept { return root() == nullptr; }
