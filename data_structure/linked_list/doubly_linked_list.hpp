@@ -118,11 +118,12 @@ public:
   }
 
   void reverse() override {
+    using std::swap;
     DoublyLinkNode<T>* current = this->m_head;
     tail = this->m_head;
 
     while (current) {
-      std::swap(current->prev, current->next);
+      swap(current->prev, current->next);
       if (!current->prev) this->m_head = current;
       current = current->prev;
     }

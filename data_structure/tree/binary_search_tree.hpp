@@ -1,7 +1,8 @@
 #pragma once
 #include <gsl/gsl>
 
-#include "binary_tree.hpp"
+#include "../../algorithm/sort/sort.hpp"
+#include "binary_tree_base.hpp"
 #include <functional>
 namespace tree {
 /**
@@ -30,11 +31,11 @@ template <
     typename T, typename Hasher = std::hash<T>, typename KeyEqual = std::equal_to<T>,
     typename Compare = std::less<>>
   requires detail::Hasher<T, Hasher> && detail::KeyEqual<T, KeyEqual> && detail::Comparator<T, Compare>
-class BinarySearchTree : public BinaryTree<T, Hasher, KeyEqual> {
+class BinarySearchTree : public detail::BinaryTreeBase<T, Hasher, KeyEqual> {
 private:
   Compare m_compare;
   using ConstNodeWithParent =
-      typename BinaryTree<T, Hasher, KeyEqual>::template NodeWithParent<const Node<T>*>;
+      typename detail::BinaryTreeBase<T, Hasher, KeyEqual>::template NodeWithParent<const Node<T>*>;
 
   /**
    * Decide whether a value should be placed in or searched via the right subtree.
@@ -105,29 +106,90 @@ private:
     return matches;
   }
 
+  const Node<T>*
+  lowestCommonAncestorImpl(const Node<T>* root, const Node<T>* a, const Node<T>* b) const noexcept override {
+    while (root != nullptr) {
+      if (shouldGoRight(a->value(), root) && shouldGoRight(b->value(), root)) {
+        root = root->right();
+      } else if (!shouldGoRight(a->value(), root) && !shouldGoRight(b->value(), root)) {
+        root = root->left();
+      } else {
+        return root;
+      }
+    }
+    return nullptr;
+  }
+
+  Node<T>* fromValuesRecursive(const array::DynamicArray<T>& sortedVals, int start, int end) {
+    if (start > end) return nullptr;
+    int mid = start + ((end - start) / 2);
+    Node<T>* node = new Node<T>(sortedVals[mid]); // NOLINT
+    node->setLeft(fromValuesRecursive(sortedVals, start, mid - 1));
+    node->setRight(fromValuesRecursive(sortedVals, mid + 1, end));
+    return node;
+  }
+
+  Node<T>* fromValuesIterative(const array::DynamicArray<T>& sortedVals, int start, int end) {
+    if (sortedVals.size() == 0) return nullptr;
+    int mid = start + ((end - start) / 2);
+    Node<T>* root = new Node<T>(sortedVals[mid]); // NOLINT
+    struct Frame {
+      Node<T>* node;
+      int start;
+      int end;
+    };
+    queue::Deque<Frame> queue{{root, start, end}};
+
+    while (!queue.empty()) {
+      auto [cur, curStart, curEnd] = queue.front();
+      queue.popFront();
+
+      int mid = curStart + ((curEnd - curStart) / 2);
+      int leftEnd = mid - 1;
+
+      if (curStart <= leftEnd) {
+        int leftMid = curStart + ((leftEnd - curStart) / 2);
+        Node<T>* node = new Node(sortedVals[leftMid]); // NOLINT
+        cur->setLeft(node);
+        queue.pushBack({node, curStart, leftEnd});
+      }
+
+      int rightStart = mid + 1;
+      if (rightStart <= curEnd) {
+        int rightMid = rightStart + ((curEnd - rightStart) / 2);
+        Node<T>* node = new Node(sortedVals[rightMid]); // NOLINT
+        cur->setRight(node);
+        queue.pushBack({node, rightStart, curEnd});
+      }
+    }
+    return root;
+  }
+
 public:
   // TODO:
   // need to enforce ordering rules for from methods
+  // maybe have a method BT::toBST that converts the current tree to BST
 
   BinarySearchTree(Hasher hasher = {}, KeyEqual eq = {}, Compare compare = {})
-      : BinaryTree<T, Hasher, KeyEqual>(hasher, eq), m_compare(compare) {}
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(compare) {}
 
   BinarySearchTree(const BinarySearchTree& other)
-      : BinaryTree<T, Hasher, KeyEqual>(other), m_compare(other.m_compare) {}
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(other), m_compare(other.m_compare) {}
 
   BinarySearchTree& operator=(const BinarySearchTree& other) {
     if (&other == this) return *this;
-    BinaryTree<T, Hasher, KeyEqual>::operator=(other);
+    detail::BinaryTreeBase<T, Hasher, KeyEqual>::operator=(other);
     m_compare = other.m_compare;
     return *this;
   }
 
   BinarySearchTree(BinarySearchTree&& other) noexcept
-      : BinaryTree<T, Hasher, KeyEqual>(std::move(other)), m_compare(std::move(other.m_compare)) {}
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(std::move(other)), m_compare(std::move(other.m_compare)) {
+  }
 
   BinarySearchTree& operator=(BinarySearchTree&& other) noexcept {
     if (&other == this) return *this;
-    BinaryTree<T, Hasher, KeyEqual>::operator=(std::move(other));
+    detail::BinaryTreeBase<T, Hasher, KeyEqual>::operator=(std::move(other));
     m_compare = std::move(other.m_compare);
     return *this;
   }
@@ -161,5 +223,43 @@ public:
     }
     return newNode;
   }
+
+  [[nodiscard]] bool validBST() const noexcept {
+    std::optional<T> prev = std::nullopt;
+    bool valid = true;
+
+    auto cb = [&](const Node<T>& node) -> void {};
+    auto shouldBreak = [&](const Node<T>& node) {
+      if (prev.has_value()) {
+        if (!m_compare(prev.value(), node.value())) {
+          valid = false;
+          return true;
+        }
+      }
+      prev = node.value();
+      return false;
+    };
+
+    this->inorderTraverse(cb, shouldBreak);
+    return valid;
+  }
+
+  // creates a balanced BST from values
+  void fromValues(std::initializer_list<T> init) {
+    if (!this->empty()) this->clear();
+    int n = init.size();
+    array::DynamicArray<T> vals(init);
+    sort::heapSort(vals.begin(), vals.end(), m_compare);
+    this->setRoot(fromValuesIterative(vals, 0, n - 1));
+  }
+  // insertAll
+
+  void swap(BinarySearchTree& other) noexcept {
+    using std::swap;
+    detail::BinaryTreeBase<T, Hasher, KeyEqual>::swap(other);
+    swap(m_compare, other.m_compare);
+  }
+  // for ADL
+  friend void swap(BinarySearchTree& a, BinarySearchTree& b) noexcept { a.swap(b); }
 };
 } // namespace tree

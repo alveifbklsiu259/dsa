@@ -102,6 +102,9 @@ private:
     bool operator!=(const ForwardIterator<IsConst>& other) const { return !(*this == other); }
   };
 
+  // XOR the hash with a right-shifted copy (hash >> 16)
+  // it mixes the high bits of the hash into the low bits to improve distribution
+  // this helps avoid clustering when only the lower bits are used for indexing
   size_t spreadHash(const K& key) const {
     size_t hash = m_hasher(key);
     return hash ^ (hash >> 16);
@@ -129,7 +132,11 @@ private:
     m_table = std::move(newTable);
   }
 
+  // assumes the table capacity is always a power of two,
+  // so this is equivalent to hash % capacity but faster
+  // ensures the index is always within [0, capacity - 1]
   size_t getIndex(const K& key) const noexcept { return spreadHash(key) & (m_table.capacity() - 1); }
+
   [[nodiscard]] size_t capacity() const noexcept { return m_table.capacity(); }
 
   [[noreturn]] void throwKeyNotFound(const K& key) const {

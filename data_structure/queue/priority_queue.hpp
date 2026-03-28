@@ -35,6 +35,7 @@ concept Sequence = (SnakeSequence<T, S> || CamelSequence<T, S>) && requires(T t,
  *  @tparam S  Type of underlying sequence, defaults to array::DynamicArray<T>.
  *  @tparam Compare  Comparison function object type, defaults to
  *                    std::less<T>.
+ *  @brief implemented using binary heap
  */
 template <typename T, typename S = array::DynamicArray<T>, typename Compare = std::less<T>>
   requires detail::Comparator<T, Compare> && detail::Sequence<T, S>
@@ -47,6 +48,7 @@ private:
   size_t right(size_t idx) { return (2 * idx) + 2; }
 
   void bubbleDown(size_t idx) {
+    using std::swap;
     size_t n = size();
 
     while (true) {
@@ -57,18 +59,19 @@ private:
       if (leftIdx < n && m_compare(m_data[extreme], m_data[leftIdx])) extreme = leftIdx;
       if (rightIdx < n && m_compare(m_data[extreme], m_data[rightIdx])) extreme = rightIdx;
       if (extreme == idx) break;
-      std::swap(m_data[idx], m_data[extreme]);
+      swap(m_data[idx], m_data[extreme]);
       idx = extreme;
     }
   }
 
   void bubbleUp(size_t idx) {
+    using std::swap;
     while (idx > 0) {
       size_t parentIdx = parent(idx);
       if (!m_compare(m_data[parentIdx], m_data[idx])) break;
       // if parent < current -> swap -> we get max heap
       // if parent > current -> swap -> we get min heap
-      std::swap(m_data[idx], m_data[parentIdx]);
+      swap(m_data[idx], m_data[parentIdx]);
       idx = parentIdx;
     }
   }
@@ -165,8 +168,9 @@ public:
   void push(value_type&& val) { emplace(std::move(val)); }
 
   void pop() {
+    using std::swap;
     if (empty()) throw std::underflow_error("Priority Queue is empty.");
-    std::swap(m_data[headIndex()], m_data[tailIndex()]);
+    swap(m_data[headIndex()], m_data[tailIndex()]);
     popBackData();
     if (!empty()) bubbleDown(headIndex());
   }

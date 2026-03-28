@@ -70,7 +70,7 @@ int main() {
   array::DynamicArray<int> inorder{9, 9, 15, 20, 7};   // left -> root -> right
   array::DynamicArray<int> postorder{9, 15, 7, 20, 9}; // left -> right -> root
   array::DynamicArray<int> levelorder{9, 9, 20, 15, 7};
-
+  std::vector<int> s;
   //   9
   //  / \
   // 9   20
@@ -91,9 +91,10 @@ int main() {
   // tree::BinarySearchTree<int> t;
   const auto& null = std::nullopt;
   // t.fromArrayRepresentation({1, null, 1, null, null, -4, null, null, null, null, null, 5, 6, null, null});
-  t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70, null, null, 25, null, 30, 30, 30});
+  // t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70, null, null, 25, null, 30, 30, 30});
   // t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70});
   // t.insert(1);
+  t.fromValues({1, 3, 4, 5, 6, 7, 8});
   // t.insert(1);
   // t.insert(1);
   // t.insert(1);
@@ -101,26 +102,32 @@ int main() {
   // t.insert(1);
   // t.insert(1);
   // t.fromInPre({1, 2}, {2, 1});
-
+  // const tree::BinaryTree<int> t2{t};
+  // auto* a = t2.findFirst(10);
+  // auto* b = t2.findFirst(30);
+  // auto* c = t2.lowestCommonAncestor(a, b);
+  // std::cout << c->value() << '\n';
   // auto* found = t.findFirst(30);
   // t.eraseFirst(20);
   // t.eraseNode(found);
-  t.eraseAll(30);
+  // t.eraseAll(30);
   // const tree::BinarySearchTree<int> t2{t};
   // std::cout << std::boolalpha << (found != nullptr) << "\n";
   // t.eraseNode(found);
-  // std::cout << "\ninorder (left -> root -> right): \n";
-  // t.inorderTraverse(foo);
-  // std::cout << "\ninorder reverse (right -> root -> left): \n";
-  // t.inorderReverseTraverse(foo);
-  // std::cout << "\npreorder (root -> left -> right): \n";
-  // t.preorderTraverse(foo);
-  // std::cout << "\npostorder (left -> right -> root): \n";
-  // t.postorderTraverse(foo);
-  // std::cout << "\nlevelorder: \n";
-  // t.levelorderTraverse(baz);
+  std::cout << "\ninorder (left -> root -> right): \n";
+  t.inorderTraverse(foo);
+  std::cout << "\ninorder reverse (right -> root -> left): \n";
+  t.inorderReverseTraverse(foo);
+  std::cout << "\npreorder (root -> left -> right): \n";
+  t.preorderTraverse(foo);
+  std::cout << "\npostorder (left -> right -> root): \n";
+  t.postorderTraverse(foo);
+  std::cout << "\nlevelorder: \n";
+  t.levelorderTraverse(baz);
   tree::TreeVisualizer tv;
   tv.visualize(t, true);
+  // std::cout << std::boolalpha << t.validBST() << '\n';
+
   // std::cout << '\n';
   // auto found = t.findFirst(20);
   // std::cout << found->value() << '\n';

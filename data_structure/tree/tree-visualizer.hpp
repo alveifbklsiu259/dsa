@@ -1,4 +1,4 @@
-#include "binary_tree.hpp"
+#include "binary_tree_base.hpp"
 #include <cmath>
 #include <format>
 #include <sstream>
@@ -37,7 +37,7 @@ private:
     return static_cast<size_t>(std::pow(2, level));
   }
 
-  template <typename T> size_t findMinNodeSize(const BinaryTree<T>& tree) const {
+  template <typename T> size_t findMinNodeSize(const detail::BinaryTreeBase<T>& tree) const {
     size_t minNodeSize = m_minNodeSize;
     auto checkSize = [&](const Node<T>& node) {
       minNodeSize = std::max(minNodeSize, detail::genericToString(node.value()).size());
@@ -165,7 +165,7 @@ public:
    */
 
   template <detail::Streamable T>
-  void visualize(const BinaryTree<T>& tree, std::optional<bool> displayEmptyNode = std::nullopt) {
+  void visualize(const detail::BinaryTreeBase<T>& tree, std::optional<bool> displayEmptyNode = std::nullopt) {
     const Node<T>* root = tree.root();
     if (root == nullptr) {
       std::cout << "Tree is empty" << '\n';

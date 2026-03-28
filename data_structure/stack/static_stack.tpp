@@ -72,10 +72,11 @@ StaticStack<T, N>& StaticStack<T, N>::operator=(const StaticStack<T, N>& other) 
 }
 
 STACK_TEMPLATE template <size_t M> void StaticStack<T, N>::swap(StaticStack<T, M>& other) noexcept {
+  using std::swap;
   static_assert(M <= N, "Source stack too large for target stack");
   size_t minLen = std::min(m_length, other.m_length);
 
-  for (size_t i = 0; i < minLen; ++i) std::swap(*getBuffer(i), *other.getBuffer(i));
+  for (size_t i = 0; i < minLen; ++i) swap(*getBuffer(i), *other.getBuffer(i));
 
   if (m_length > other.m_length) {
     for (size_t i = other.m_length; i < m_length && i < M; ++i) {
@@ -89,7 +90,7 @@ STACK_TEMPLATE template <size_t M> void StaticStack<T, N>::swap(StaticStack<T, M
     }
   }
 
-  std::swap(m_length, other.m_length);
+  swap(m_length, other.m_length);
 }
 
 STACK_TEMPLATE

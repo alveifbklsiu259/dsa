@@ -1,4 +1,5 @@
 #pragma once
+#include "binary_tree_base.hpp"
 #include "detail.hpp"
 #include <utility>
 
@@ -6,7 +7,11 @@ namespace tree {
 
 template <typename T> class Node {
   template <typename U, typename Hasher, typename KeyEqual>
-    requires tree::detail::Hasher<U, Hasher> && detail::KeyEqual<U, KeyEqual>
+    requires detail::Hasher<U, Hasher> && detail::KeyEqual<U, KeyEqual>
+  friend class detail::BinaryTreeBase;
+
+  template <typename U, typename Hasher, typename KeyEqual>
+    requires detail::Hasher<U, Hasher> && detail::KeyEqual<U, KeyEqual>
   friend class BinaryTree;
 
   template <typename U, typename Hasher, typename KeyEqual, typename Compare>

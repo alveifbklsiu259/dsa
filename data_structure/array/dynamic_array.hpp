@@ -351,9 +351,10 @@ public:
   constexpr T& back() noexcept { return operator[](m_length - 1); }
 
   constexpr void swap(DynamicArray& other) noexcept {
-    std::swap(m_data, other.m_data);
-    std::swap(m_length, other.m_length);
-    std::swap(m_capacity, other.m_capacity);
+    using std::swap;
+    swap(m_data, other.m_data);
+    swap(m_length, other.m_length);
+    swap(m_capacity, other.m_capacity);
   }
 
   [[nodiscard]] constexpr size_t size() const noexcept { return m_length; };
