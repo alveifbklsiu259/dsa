@@ -87,14 +87,17 @@ int main() {
   //   2       3
   //  / \     / \
   // 2   3   1   7
-  tree::BinarySearchTree<int> t;
+  std::vector<int> v{1, 2, 4, 5, 6};
+  array::DynamicArray<std::optional<int>> v2{1, 2, 3, 4, 5, 6};
+  tree::BinaryTree<int> t(v2);
+  // tree::BinaryTree<int> t{v.begin(), v.end()};
   // tree::BinarySearchTree<int> t;
   const auto& null = std::nullopt;
   // t.fromArrayRepresentation({1, null, 1, null, null, -4, null, null, null, null, null, 5, 6, null, null});
   // t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70, null, null, 25, null, 30, 30, 30});
   // t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70});
   // t.insert(1);
-  t.fromValues({1, 3, 4, 5, 6, 7, 8});
+  // t.fromValues({1, 3, 4, 5, 6, 7, 8});
   // t.insert(1);
   // t.insert(1);
   // t.insert(1);

@@ -281,7 +281,9 @@ private:
     this->setRoot(buildTree(buildTree, 0)); // NOLINT
   }
 
-  template <typename Seq> void fromArrayRepresentationIterative(Seq&& seq) { // NOLINT
+  template <typename Seq>
+    requires detail::RandomAccessOptionalSequence<T, Seq>
+  void fromArrayRepresentationIterative(Seq&& seq) { // NOLINT
     size_t n = std::ranges::size(seq);
 
     constexpr bool isSeqLRef = std::is_lvalue_reference_v<Seq>;
@@ -323,6 +325,25 @@ private:
 public:
   // inherit all constructors
   using detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase;
+
+  // BinaryTree(std::initializer_list<std::optional<T>> list, Hasher hasher = {}, KeyEqual eq = {})
+  //     : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(hasher, eq) {
+  //   fromArrayRepresentation(list);
+  // }
+
+  template <typename Seq>
+    requires detail::RandomAccessOptionalSequence<T, Seq>
+  BinaryTree(Seq seq, Hasher hasher = {}, KeyEqual eq = {})
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(hasher, eq) {
+    fromArrayRepresentation(seq);
+  }
+
+  template <std::input_iterator InputIt>
+    requires std::constructible_from<std::optional<T>, std::iter_value_t<InputIt>>
+  BinaryTree(InputIt first, InputIt last, Hasher hasher = {}, KeyEqual eq = {})
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(hasher, eq) {
+    fromArrayRepresentation(first, last);
+  }
 
   template <typename Seq>
     requires detail::BidirectionalSequence<T, Seq>
@@ -403,6 +424,12 @@ public:
 
   void fromArrayRepresentation(std::initializer_list<std::optional<T>> l) {
     fromArrayRepresentation(array::DynamicArray<std::optional<T>>(l));
+  }
+
+  template <std::input_iterator InputIt>
+    requires std::constructible_from<std::optional<T>, std::iter_value_t<InputIt>>
+  void fromArrayRepresentation(InputIt first, InputIt last) {
+    fromArrayRepresentation(array::DynamicArray<std::optional<T>>(first, last));
   }
 };
 

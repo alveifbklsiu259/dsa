@@ -167,8 +167,21 @@ private:
 
 public:
   // TODO:
-  // need to enforce ordering rules for from methods
   // maybe have a method BT::toBST that converts the current tree to BST
+
+  BinarySearchTree(
+      std::initializer_list<T> values, Hasher hasher = {}, KeyEqual eq = {}, Compare compare = {}
+  )
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(compare) {
+    fromValues(values);
+  }
+
+  template <std::input_iterator InputIt>
+    requires std::constructible_from<T, std::iter_value_t<InputIt>>
+  BinarySearchTree(InputIt first, InputIt last, Hasher hasher = {}, KeyEqual eq = {}, Compare compare = {})
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(compare) {
+    fromValues(first, last);
+  }
 
   BinarySearchTree(Hasher hasher = {}, KeyEqual eq = {}, Compare compare = {})
       : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(compare) {}
@@ -245,13 +258,19 @@ public:
   }
 
   // creates a balanced BST from values
-  void fromValues(std::initializer_list<T> init) {
+  template <std::input_iterator InputIt>
+    requires std::constructible_from<T, std::iter_value_t<InputIt>>
+  void fromValues(InputIt first, InputIt last) {
     if (!this->empty()) this->clear();
-    int n = init.size();
-    array::DynamicArray<T> vals(init);
+    int n = std::distance(first, last);
+    array::DynamicArray<T> vals(first, last);
     sort::heapSort(vals.begin(), vals.end(), m_compare);
     this->setRoot(fromValuesIterative(vals, 0, n - 1));
   }
+
+  // creates a balanced BST from values
+  void fromValues(std::initializer_list<T> init) { fromValues(init.begin(), init.end()); }
+
   // insertAll
 
   void swap(BinarySearchTree& other) noexcept {
