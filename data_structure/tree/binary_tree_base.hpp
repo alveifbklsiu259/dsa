@@ -9,11 +9,9 @@ namespace tree {
 template <typename T> class Node; // forward declaration, definition in node.hpp
 namespace detail {
 // TODO:
-// when we extend BinaryTree from BinarySearchTree, we need to have some check or rewrite tree-constructing
-// methods like fromInPre. or maybe use that hook design pattern to insert check in the beginning
 
-// maybe consider an interface that all trees implement
-// maybe findLast, eraseLast
+//  findLast, eraseLast, insertAll(initializer_list)
+//  implement ordered map (std::map, std::multimap) using BST(AVL or red-black)
 
 // Implement different iterators:
 // create a generic BinaryTreeIterator with different sub-classes
@@ -60,45 +58,59 @@ what are spanning trees?
 trie problems:
 - https://leetcode.com/problems/word-search-ii/description/ */
 
+/*
+ * Trees to implement
+ * - AVL tree
+ * - Red-Black tree
+ * - Expression tree
+ * - Trie
+ * - B-tree
+ * - Order-statistic tree
+ * - Spanning tree
+ * */
+
 template <typename T, typename Hasher = std::hash<T>, typename KeyEqual = std::equal_to<T>>
   requires detail::Hasher<T, Hasher> && detail::KeyEqual<T, KeyEqual>
 class BinaryTreeBase {
 
 protected:
-  void setRoot(gsl::owner<Node<T>*> node) noexcept { m_root = node; }
-  void setRoot(std::nullptr_t) noexcept { m_root = static_cast<gsl::owner<Node<T>*>>(nullptr); }
+  constexpr void setRoot(gsl::owner<Node<T>*> node) noexcept { m_root = node; }
+  constexpr void setRoot(std::nullptr_t) noexcept { m_root = static_cast<gsl::owner<Node<T>*>>(nullptr); }
 
-  Hasher getHasher() noexcept { return m_hasher; }
-  Hasher getHasher() const noexcept { return m_hasher; }
+  constexpr Hasher getHasher() noexcept { return m_hasher; }
+  constexpr Hasher getHasher() const noexcept { return m_hasher; }
 
-  KeyEqual getKeyEqual() noexcept { return m_keyEqual; }
-  KeyEqual getKeyEqual() const noexcept { return m_keyEqual; }
+  constexpr KeyEqual getKeyEqual() noexcept { return m_keyEqual; }
+  constexpr KeyEqual getKeyEqual() const noexcept { return m_keyEqual; }
 
-  bool keyEqual(const T& a, const T& b) const noexcept { return m_keyEqual(a, b); }
+  constexpr bool keyEqual(const T& a, const T& b) const noexcept { return m_keyEqual(a, b); }
 
-  bool eraseNode(Node<T>* target, Node<T>* parent) { // NOLINT
+  constexpr bool eraseNode(Node<T>* target, Node<T>* parent) { // NOLINT
     if (target == nullptr || empty()) return false;
     bool hasBothChildren = target->left() != nullptr && target->right() != nullptr;
 
     if (hasBothChildren) {
-      Node<T>* predecessorParent = target;
-      Node<T>* predecessor = target->left();
+      // for BinaryTree, using both successor or predecessor will work
+      // but for enforcing duplicates rule in BST:
+      // predecessor: left <= root < right
+      // successor: left < root <= right
+      Node<T>* successorParent = target;
+      Node<T>* successor = target->right();
 
-      while (predecessor->right() != nullptr) {
-        predecessorParent = predecessor;
-        predecessor = predecessor->right();
+      while (successor->left() != nullptr) {
+        successorParent = successor;
+        successor = successor->left();
       }
 
-      target->setValue(predecessor->value());
-      target = predecessor;
-      parent = predecessorParent;
+      target->setValue(successor->value());
+      target = successor;
+      parent = successorParent;
     }
 
     // target has at most one child now
     Node<T>* child = target->left() != nullptr ? target->left() : target->right();
 
     if (parent == nullptr) {
-      assert(root() == nullptr);
       setRoot(child);
     } else if (parent->left() == target) {
       parent->setLeft(child);
@@ -135,7 +147,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool preorderRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
+  constexpr bool preorderRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
     if (node == nullptr) return true;
 
     cb(*node);
@@ -151,7 +163,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool preorderIterative(
+  constexpr bool preorderIterative(
       NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
       ShouldBreak shouldBreak = {}
@@ -175,7 +187,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool preorderMorris(
+  constexpr bool preorderMorris(
       NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
       ShouldBreak shouldBreak = {}
@@ -208,7 +220,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool inorderRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
+  constexpr bool inorderRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
     if (node == nullptr) return true;
 
     if (!inorderRecursive(node->left(), std::forward<Callback>(cb), shouldBreak)) return false;
@@ -224,7 +236,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool inorderIterative(
+  constexpr bool inorderIterative(
       NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
       ShouldBreak shouldBreak = {}
@@ -253,7 +265,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool inorderMorris(
+  constexpr bool inorderMorris(
       NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
       ShouldBreak shouldBreak = {}
@@ -286,7 +298,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool inorderReverseRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
+  constexpr bool inorderReverseRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
     if (node == nullptr) return true;
 
     if (!inorderReverseRecursive(node->right(), std::forward<Callback>(cb), shouldBreak)) return false;
@@ -302,7 +314,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool inorderReverseIterative(
+  constexpr bool inorderReverseIterative(
       NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
       ShouldBreak shouldBreak = {}
@@ -332,7 +344,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool inorderReverseMorris(
+  constexpr bool inorderReverseMorris(
       NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
       ShouldBreak shouldBreak = {}
@@ -365,7 +377,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool postorderRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
+  constexpr bool postorderRecursive(NodeType* node, Callback&& cb, ShouldBreak shouldBreak = {}) const {
     if (node == nullptr) return true;
 
     if (!postorderRecursive(node->left(), std::forward<Callback>(cb), shouldBreak)) return false;
@@ -380,7 +392,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
       std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool postorderIterative(
+  constexpr bool postorderIterative(
       NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
       ShouldBreak shouldBreak = {}
@@ -412,7 +424,7 @@ private:
 
   // may be a bit less efficient in time complexity (compare to iterative/recursive approaches)
   template <typename NodeType, std::invocable<NodeType&> Callback, std::predicate<NodeType&> ShouldBreak = DefaultBreak<NodeType>>
-  bool postorderMorris( // NOLINT
+  constexpr bool postorderMorris( // NOLINT
       NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
       ShouldBreak shouldBreak = {}
@@ -476,7 +488,7 @@ private:
   template <
       typename NodeType, std::invocable<NodeType&, size_t /* level, starts from 0 */> Callback,
       std::predicate<NodeType&, size_t /* level, starts from 0 */> ShouldBreak = DefaultBreak<NodeType>>
-  bool levelorderIterative(
+  constexpr bool levelorderIterative(
       NodeType* node,
       Callback&& cb, // NOLINT allow move-only callable
       ShouldBreak shouldBreak = {}
@@ -502,7 +514,7 @@ private:
     return true;
   }
 
-  virtual NodeWithParent<const Node<T>*> findFirstWithParent(const T& val) const noexcept {
+  constexpr virtual NodeWithParent<const Node<T>*> findFirstWithParent(const T& val) const noexcept {
     if (empty()) return {};
     queue::Deque<std::pair<const Node<T>*, const Node<T>*>> q{{root(), nullptr}};
 
@@ -517,12 +529,12 @@ private:
     return {};
   }
 
-  NodeWithParent<Node<T>*> findFirstWithParent(const T& val) noexcept {
+  constexpr NodeWithParent<Node<T>*> findFirstWithParent(const T& val) noexcept {
     auto res = static_cast<const BinaryTreeBase<T, Hasher, KeyEqual>*>(this)->findFirstWithParent(val);
     return {const_cast<Node<T>*>(res.target), const_cast<Node<T>*>(res.parent)};
   }
 
-  virtual NodeWithParent<const Node<T>*> findByNode(const Node<T>* target) const noexcept {
+  constexpr virtual NodeWithParent<const Node<T>*> findByNode(const Node<T>* target) const noexcept {
     if (empty() || target == nullptr) return {};
     queue::Deque<std::pair<const Node<T>*, const Node<T>*>> q{{root(), nullptr}};
 
@@ -537,12 +549,12 @@ private:
     return {};
   }
 
-  NodeWithParent<Node<T>*> findByNode(Node<T>* target) noexcept {
+  constexpr NodeWithParent<Node<T>*> findByNode(Node<T>* target) noexcept {
     auto res = static_cast<const BinaryTreeBase<T, Hasher, KeyEqual>*>(this)->findByNode(target);
     return {const_cast<Node<T>*>(res.target), const_cast<Node<T>*>(res.parent)};
   }
 
-  void deepCopyTree(const BinaryTreeBase& other) {
+  constexpr void deepCopyTree(const BinaryTreeBase& other) {
     if (other.empty()) return;
 
     setRoot(new Node(other.root()->value()));
@@ -563,7 +575,8 @@ private:
   }
 
   // find by level-order
-  virtual array::DynamicArray<NodeWithParent<const Node<T>*>> findAllWithParent(const T& val) const noexcept {
+  constexpr virtual array::DynamicArray<NodeWithParent<const Node<T>*>>
+  findAllWithParent(const T& val) const noexcept {
     if (empty()) return {};
     queue::Deque<std::pair<const Node<T>*, const Node<T>*>> q{{root(), nullptr}};
     array::DynamicArray<NodeWithParent<const Node<T>*>> matches;
@@ -579,7 +592,7 @@ private:
     return matches;
   }
 
-  array::DynamicArray<NodeWithParent<Node<T>*>> findAllWithParent(const T& val) noexcept {
+  constexpr array::DynamicArray<NodeWithParent<Node<T>*>> findAllWithParent(const T& val) noexcept {
     array::DynamicArray<NodeWithParent<const Node<T>*>> matches =
         static_cast<const BinaryTreeBase<T, Hasher, KeyEqual>*>(this)->findAllWithParent(val);
 
@@ -592,7 +605,7 @@ private:
     return res;
   }
 
-  virtual const Node<T>*
+  constexpr virtual const Node<T>*
   lowestCommonAncestorImpl(const Node<T>* root, const Node<T>* a, const Node<T>* b) const noexcept {
     if (root == nullptr || root == a || root == b) return root;
     const Node<T>* left = lowestCommonAncestorImpl(root->left(), a, b);
@@ -602,25 +615,26 @@ private:
   }
 
 public:
-  BinaryTreeBase(Hasher hasher = {}, KeyEqual eq = {}) : m_hasher(hasher), m_keyEqual(eq) {}
+  constexpr BinaryTreeBase(Hasher hasher = {}, KeyEqual eq = {}) : m_hasher(hasher), m_keyEqual(eq) {}
 
-  BinaryTreeBase(const BinaryTreeBase& other) : m_hasher(other.m_hasher), m_keyEqual(other.m_keyEqual) {
+  constexpr BinaryTreeBase(const BinaryTreeBase& other)
+      : m_hasher(other.m_hasher), m_keyEqual(other.m_keyEqual) {
     deepCopyTree(other);
   }
 
-  BinaryTreeBase& operator=(const BinaryTreeBase& other) {
+  constexpr BinaryTreeBase& operator=(const BinaryTreeBase& other) {
     if (&other == this) return *this;
     clear();
     deepCopyTree(other);
     return *this;
   }
 
-  BinaryTreeBase(BinaryTreeBase&& other) noexcept
+  constexpr BinaryTreeBase(BinaryTreeBase&& other) noexcept
       : m_hasher(std::move(other.m_hasher)), m_keyEqual(std::move(other.m_keyEqual)), m_root(other.root()) {
     other.setRoot(nullptr);
   }
 
-  BinaryTreeBase& operator=(BinaryTreeBase&& other) noexcept {
+  constexpr BinaryTreeBase& operator=(BinaryTreeBase&& other) noexcept {
     if (&other == this) return *this;
     clear();
     m_hasher = std::move(other.m_hasher);
@@ -630,17 +644,17 @@ public:
     return *this;
   }
 
-  virtual ~BinaryTreeBase() noexcept { clear(); }
+  constexpr virtual ~BinaryTreeBase() noexcept { clear(); }
 
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
-  bool inorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
+  constexpr bool inorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
     return inorderMorris(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
   template <
       std::invocable<const Node<T>&> Callback,
       std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
-  bool inorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
+  constexpr bool inorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
     return inorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
@@ -650,43 +664,43 @@ public:
    *        inorder-reverse can be used to traverse the tree in a non-increasing order.
    */
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
-  bool inorderReverseTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
+  constexpr bool inorderReverseTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
     return inorderReverseMorris(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
   template <
       std::invocable<const Node<T>&> Callback,
       std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
-  bool inorderReverseTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
+  constexpr bool inorderReverseTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
     return inorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
-  bool preorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
+  constexpr bool preorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
     return preorderMorris(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
   template <
       std::invocable<const Node<T>&> Callback,
       std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
-  bool preorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
+  constexpr bool preorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
     return preorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
-  bool postorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
+  constexpr bool postorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
     return postorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
   template <
       std::invocable<const Node<T>&> Callback,
       std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
-  bool postorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
+  constexpr bool postorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
     return postorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
-  bool levelorderTraverse(
+  constexpr bool levelorderTraverse(
       Callback&& cb, ShouldBreak shouldBreak = {} // NOLINT allow move-only callable
   ) {
     return levelorderTraverse(
@@ -697,7 +711,7 @@ public:
   template <
       std::invocable<const Node<T>&> Callback,
       std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
-  bool levelorderTraverse(
+  constexpr bool levelorderTraverse(
       Callback&& cb, ShouldBreak shouldBreak = {} // NOLINT allow move-only callable
   ) const {
     return levelorderTraverse(
@@ -710,7 +724,7 @@ public:
       std::invocable<Node<T>&, size_t /* level, starts from 0 */> Callback,
       std::predicate<Node<T>&, size_t /* level, starts from 0 */> ShouldBreak =
           DefaultBreakWithLevel<Node<T>>>
-  bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
+  constexpr bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
     return levelorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
@@ -718,11 +732,11 @@ public:
       std::invocable<const Node<T>&, size_t /* level, starts from 0 */> Callback,
       std::predicate<const Node<T>&, size_t /* level, starts from 0 */> ShouldBreak =
           DefaultBreakWithLevel<const Node<T>>>
-  bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
+  constexpr bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
     return levelorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
   }
 
-  array::DynamicArray<Node<T>*> getArrayRepresentation() const {
+  constexpr array::DynamicArray<Node<T>*> getArrayRepresentation() const {
     array::DynamicArray<Node<T>*> res;
     queue::Deque<Node<T>*> q{root()};
     size_t treeHeight = height();
@@ -743,7 +757,7 @@ public:
   }
 
   // insert by level-order, filling the tree left to right
-  virtual Node<T>* insert(const T& val) noexcept {
+  constexpr virtual Node<T>* insert(const T& val) noexcept {
     gsl::owner<Node<T>*> newNode = new Node<T>(val);
 
     if (empty()) {
@@ -769,27 +783,26 @@ public:
     return newNode;
   }
 
-  Node<T>* findFirst(const T& val) noexcept {
+  constexpr Node<T>* findFirst(const T& val) noexcept {
     return const_cast<Node<T>*>(static_cast<const BinaryTreeBase*>(this)->findFirst(val));
   }
 
-  const Node<T>* findFirst(const T& val) const noexcept {
+  constexpr const Node<T>* findFirst(const T& val) const noexcept {
     NodeWithParent result = findFirstWithParent(val);
     return result.target;
   }
 
-  // maybe we can use the hook pattern instead of making them virtual
-  virtual bool eraseNode(Node<T>* target) {
+  constexpr bool eraseNode(Node<T>* target) {
     auto [_target, parent] = findByNode(target);
     return eraseNode(target, parent);
   }
 
-  virtual bool eraseFirst(const T& val) {
+  constexpr bool eraseFirst(const T& val) {
     auto [target, parent] = findFirstWithParent(val);
     return eraseNode(target, parent);
   }
 
-  virtual size_t eraseAll(const T& val) {
+  constexpr size_t eraseAll(const T& val) {
     array::DynamicArray<NodeWithParent<Node<T>*>> matches = findAllWithParent(val);
     size_t count = 0;
 
@@ -801,7 +814,7 @@ public:
     return count;
   }
 
-  void clear() noexcept {
+  constexpr void clear() noexcept {
     if (empty()) return;
     auto deleteNode = [](Node<T>& node) {
       delete &node; // NOLINT
@@ -810,14 +823,15 @@ public:
     setRoot(nullptr);
   }
 
-  Node<T>* lowestCommonAncestor(Node<T>* a, Node<T>* b) noexcept {
+  constexpr Node<T>* lowestCommonAncestor(Node<T>* a, Node<T>* b) noexcept {
     return const_cast<Node<T>*>(lowestCommonAncestorImpl(root(), a, b));
   }
-  const Node<T>* lowestCommonAncestor(const Node<T>* a, const Node<T>* b) const noexcept {
+
+  constexpr const Node<T>* lowestCommonAncestor(const Node<T>* a, const Node<T>* b) const noexcept {
     return lowestCommonAncestorImpl(root(), a, b);
   }
 
-  [[nodiscard]] bool heightBalanced() const noexcept {
+  [[nodiscard]] constexpr bool heightBalanced() const noexcept {
     if (empty()) return true;
     hashmap::HashMap<Node<T>*, int> height;
 
@@ -836,7 +850,7 @@ public:
     return balanced;
   }
 
-  [[nodiscard]] bool complete() const noexcept {
+  [[nodiscard]] constexpr bool complete() const noexcept {
     if (empty()) return true;
     queue::Deque<Node<T>*> queue;
     queue.pushBack(root());
@@ -857,7 +871,7 @@ public:
     return true;
   }
 
-  [[nodiscard]] size_t height() const noexcept {
+  [[nodiscard]] constexpr size_t height() const noexcept {
     if (empty()) return 0;
     size_t height = 0;
     queue::Deque<const Node<T>*> q{root()};
@@ -876,7 +890,7 @@ public:
     return height;
   }
 
-  [[nodiscard]] bool full() const noexcept {
+  [[nodiscard]] constexpr bool full() const noexcept {
     if (empty()) return true;
     bool isFull = true;
 
@@ -891,7 +905,7 @@ public:
     return isFull;
   }
 
-  [[nodiscard]] bool symmetric() const noexcept {
+  [[nodiscard]] constexpr bool symmetric() const noexcept {
     if (root() == nullptr) return true;
     queue::Deque<std::pair<Node<T>*, Node<T>*>> q{{root()->left(), root()->right()}};
 
@@ -911,7 +925,7 @@ public:
   [[nodiscard]] constexpr Node<T>* root() noexcept { return m_root; }             // NOLINT
   [[nodiscard]] constexpr const Node<T>* root() const noexcept { return m_root; } // NOLINT
 
-  void swap(BinaryTreeBase& other) noexcept {
+  constexpr void swap(BinaryTreeBase& other) noexcept {
     using std::swap;
     swap(m_root, other.m_root);
     swap(m_hasher, other.m_hasher);
@@ -921,7 +935,7 @@ public:
 } // namespace detail
 
 template <typename T, typename Hasher, typename KeyEqual>
-void swap(
+constexpr void swap(
     detail::BinaryTreeBase<T, Hasher, KeyEqual>& a, detail::BinaryTreeBase<T, Hasher, KeyEqual>& b
 ) noexcept { // for ADL
   a.swap(b);

@@ -14,7 +14,8 @@ concept BidirectionalSequence =
 
 template <typename T, typename Seq>
 concept RandomAccessOptionalSequence =
-    std::ranges::random_access_range<Seq> && std::same_as<std::ranges::range_value_t<Seq>, std::optional<T>>;
+    std::ranges::random_access_range<Seq> &&
+    std::constructible_from<std::optional<T>, std::ranges::range_value_t<Seq>>;
 
 template <typename T, typename H>
 concept Hasher =

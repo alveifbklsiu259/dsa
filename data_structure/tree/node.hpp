@@ -23,11 +23,11 @@ private:
   Node* m_left = nullptr;
   Node* m_right = nullptr;
 
-  void setValue(const T& val) noexcept { m_value = val; }
-  void setValue(T&& val) noexcept { m_value = std::move(val); }
+  constexpr void setValue(const T& val) noexcept { m_value = val; }
+  constexpr void setValue(T&& val) noexcept { m_value = std::move(val); }
 
-  void setLeft(Node<T>* left) noexcept { m_left = left; }
-  void setRight(Node<T>* right) noexcept { m_right = right; }
+  constexpr void setLeft(Node<T>* left) noexcept { m_left = left; }
+  constexpr void setRight(Node<T>* right) noexcept { m_right = right; }
 
 public:
   constexpr Node() = default;
@@ -43,12 +43,12 @@ public:
   constexpr explicit Node(T&& val, Node* left = nullptr, Node* right = nullptr) // NOLINT
       : m_value(std::move(val)), m_left(left), m_right(right) {}
 
-  const T& value() const noexcept { return m_value; }
+  constexpr const T& value() const noexcept { return m_value; }
 
-  Node<T>* left() noexcept { return m_left; }
-  const Node<T>* left() const noexcept { return m_left; }
+  constexpr Node<T>* left() noexcept { return m_left; }
+  constexpr const Node<T>* left() const noexcept { return m_left; }
 
-  Node<T>* right() noexcept { return m_right; }
-  const Node<T>* right() const noexcept { return m_right; }
+  constexpr Node<T>* right() noexcept { return m_right; }
+  constexpr const Node<T>* right() const noexcept { return m_right; }
 };
 } // namespace tree

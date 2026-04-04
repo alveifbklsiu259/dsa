@@ -6,6 +6,7 @@
 #include "./binary_tree_base.hpp"
 #include "./detail.hpp"
 #include "./node.hpp"
+#include "binary_search_tree.hpp"
 #include <gsl/gsl>
 #include <optional>
 
@@ -55,6 +56,10 @@ namespace tree {
 template <typename T, typename Hasher = std::hash<T>, typename KeyEqual = std::equal_to<T>>
   requires detail::Hasher<T, Hasher> && detail::KeyEqual<T, KeyEqual>
 class BinaryTree : public detail::BinaryTreeBase<T, Hasher, KeyEqual> {
+
+  template <typename U, typename H, typename K, typename Compare>
+    requires detail::Hasher<U, H> && detail::KeyEqual<U, K> && detail::Comparator<U, Compare>
+  friend class BinarySearchTree;
 
 private:
   template <typename Seq>
@@ -326,10 +331,10 @@ public:
   // inherit all constructors
   using detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase;
 
-  // BinaryTree(std::initializer_list<std::optional<T>> list, Hasher hasher = {}, KeyEqual eq = {})
-  //     : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(hasher, eq) {
-  //   fromArrayRepresentation(list);
-  // }
+  BinaryTree(std::initializer_list<std::optional<T>> list, Hasher hasher = {}, KeyEqual eq = {})
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(hasher, eq) {
+    fromArrayRepresentation(list);
+  }
 
   template <typename Seq>
     requires detail::RandomAccessOptionalSequence<T, Seq>
@@ -415,11 +420,16 @@ public:
   void fromArrayRepresentation(Seq&& seq) {
     if (!this->empty()) this->clear();
     size_t n = std::ranges::size(seq);
-    if (n == 0 || !seq[0].has_value()) {
-      this->setRoot(nullptr);
-      return;
+    if (n == 0) return;
+
+    constexpr bool isValOptional = std::same_as<std::ranges::range_value_t<Seq>, std::optional<T>>;
+    if constexpr (isValOptional) {
+      if (!seq[0].has_value()) return;
+      fromArrayRepresentationIterative(std::forward<Seq>(seq));
+    } else {
+      array::DynamicArray<std::optional<T>> normalized(seq.begin(), seq.end());
+      fromArrayRepresentationIterative(normalized);
     }
-    fromArrayRepresentationIterative(std::forward<Seq>(seq));
   }
 
   void fromArrayRepresentation(std::initializer_list<std::optional<T>> l) {
@@ -430,6 +440,12 @@ public:
     requires std::constructible_from<std::optional<T>, std::iter_value_t<InputIt>>
   void fromArrayRepresentation(InputIt first, InputIt last) {
     fromArrayRepresentation(array::DynamicArray<std::optional<T>>(first, last));
+  }
+
+  template <typename Compare = std::less<>>
+    requires detail::Comparator<T, Compare>
+  BinarySearchTree<T, Hasher, KeyEqual, Compare> toBinarySearchTree(Compare compare = {}) {
+    return BinarySearchTree<T, Hasher, KeyEqual, Compare>{*this, compare};
   }
 };
 

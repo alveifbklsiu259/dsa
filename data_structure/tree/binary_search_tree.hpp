@@ -5,9 +5,16 @@
 #include "binary_tree_base.hpp"
 #include <functional>
 namespace tree {
+
+template <typename T, typename Hasher, typename KeyEqual>
+  requires detail::Hasher<T, Hasher> && detail::KeyEqual<T, KeyEqual>
+class BinaryTree; // forward declaration, definition in binary_tree.hpp
+
 /**
  *
  * Ordering rules:
+ * - left < root <= right
+ *
  * - The comparator (`Compare`) defines the tree’s ordering semantics.
  *   By default, `std::less<>` is used, which enforces the conventional
  *   BST invariant: values less than the current node go to the left
@@ -120,19 +127,28 @@ private:
     return nullptr;
   }
 
-  Node<T>* fromValuesRecursive(const array::DynamicArray<T>& sortedVals, int start, int end) {
+  // move T instead of copy
+  Node<T>* fromValuesRecursive(array::DynamicArray<T>& sortedVals, int start, int end) {
     if (start > end) return nullptr;
     int mid = start + ((end - start) / 2);
-    Node<T>* node = new Node<T>(sortedVals[mid]); // NOLINT
+
+    // move mid to the index of the leftmost duplicate value -> all duplicates go right
+    while (mid - 1 >= start && sortedVals[mid - 1] == sortedVals[mid]) --mid;
+
+    Node<T>* node = new Node<T>(std::move(sortedVals[mid])); // NOLINT
     node->setLeft(fromValuesRecursive(sortedVals, start, mid - 1));
     node->setRight(fromValuesRecursive(sortedVals, mid + 1, end));
     return node;
   }
 
-  Node<T>* fromValuesIterative(const array::DynamicArray<T>& sortedVals, int start, int end) {
+  Node<T>* fromValuesIterative(array::DynamicArray<T>& sortedVals, int start, int end) {
     if (sortedVals.size() == 0) return nullptr;
     int mid = start + ((end - start) / 2);
-    Node<T>* root = new Node<T>(sortedVals[mid]); // NOLINT
+
+    // move mid to the index of the leftmost duplicate value -> all duplicates go right
+    while (mid - 1 >= start && sortedVals[mid - 1] == sortedVals[mid]) --mid;
+
+    Node<T>* root = new Node<T>(std::move(sortedVals[mid])); // NOLINT
     struct Frame {
       Node<T>* node;
       int start;
@@ -145,11 +161,17 @@ private:
       queue.popFront();
 
       int mid = curStart + ((curEnd - curStart) / 2);
+      // enforce duplicates rule
+      while (mid - 1 >= curStart && sortedVals[mid - 1] == sortedVals[mid]) --mid;
+
       int leftEnd = mid - 1;
 
       if (curStart <= leftEnd) {
         int leftMid = curStart + ((leftEnd - curStart) / 2);
-        Node<T>* node = new Node(sortedVals[leftMid]); // NOLINT
+
+        // enforce duplicates rule
+        while (leftMid - 1 >= curStart && sortedVals[leftMid - 1] == sortedVals[leftMid]) --leftMid;
+        Node<T>* node = new Node(std::move(sortedVals[leftMid])); // NOLINT
         cur->setLeft(node);
         queue.pushBack({node, curStart, leftEnd});
       }
@@ -157,7 +179,10 @@ private:
       int rightStart = mid + 1;
       if (rightStart <= curEnd) {
         int rightMid = rightStart + ((curEnd - rightStart) / 2);
-        Node<T>* node = new Node(sortedVals[rightMid]); // NOLINT
+
+        // enforce duplicates rule
+        while (rightMid - 1 >= rightStart && sortedVals[rightMid - 1] == sortedVals[rightMid]) --rightMid;
+        Node<T>* node = new Node(std::move(sortedVals[rightMid])); // NOLINT
         cur->setRight(node);
         queue.pushBack({node, rightStart, curEnd});
       }
@@ -166,9 +191,6 @@ private:
   }
 
 public:
-  // TODO:
-  // maybe have a method BT::toBST that converts the current tree to BST
-
   BinarySearchTree(
       std::initializer_list<T> values, Hasher hasher = {}, KeyEqual eq = {}, Compare compare = {}
   )
@@ -181,6 +203,26 @@ public:
   BinarySearchTree(InputIt first, InputIt last, Hasher hasher = {}, KeyEqual eq = {}, Compare compare = {})
       : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(compare) {
     fromValues(first, last);
+  }
+
+  explicit BinarySearchTree(const BinaryTree<T, Hasher, KeyEqual>& bt, Compare compare = {})
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(bt.getHasher(), bt.getKeyEqual()), m_compare(compare) {
+    array::DynamicArray<T> values;
+    auto getValue = [&](auto&& node) { values.emplaceBack(node.value()); };
+    bt.levelorderTraverse(getValue);
+
+    sort::heapSort(values.begin(), values.end(), compare);
+    fromValues(values.begin(), values.end());
+  }
+
+  explicit BinarySearchTree(BinaryTree<T, Hasher, KeyEqual>&& bt, Compare compare = {}) // NOLINT
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(bt.getHasher(), bt.getKeyEqual()), m_compare(compare) {
+    array::DynamicArray<T> values;
+    auto getValue = [&](auto&& node) { values.emplaceBack(std::move(node.value())); };
+    bt.levelorderTraverse(getValue);
+
+    sort::heapSort(values.begin(), values.end(), compare);
+    fromValues(values.begin(), values.end());
   }
 
   BinarySearchTree(Hasher hasher = {}, KeyEqual eq = {}, Compare compare = {})
@@ -270,8 +312,6 @@ public:
 
   // creates a balanced BST from values
   void fromValues(std::initializer_list<T> init) { fromValues(init.begin(), init.end()); }
-
-  // insertAll
 
   void swap(BinarySearchTree& other) noexcept {
     using std::swap;

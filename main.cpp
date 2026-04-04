@@ -70,6 +70,7 @@ int main() {
   array::DynamicArray<int> inorder{9, 9, 15, 20, 7};   // left -> root -> right
   array::DynamicArray<int> postorder{9, 15, 7, 20, 9}; // left -> right -> root
   array::DynamicArray<int> levelorder{9, 9, 20, 15, 7};
+
   std::vector<int> s;
   //   9
   //  / \
@@ -89,7 +90,11 @@ int main() {
   // 2   3   1   7
   std::vector<int> v{1, 2, 4, 5, 6};
   array::DynamicArray<std::optional<int>> v2{1, 2, 3, 4, 5, 6};
-  tree::BinaryTree<int> t(v2);
+  tree::BinaryTree<int> bt{2, 2, 3, 4, 4, 1, 2, 6, 8, 1, 1, 3, 2, 7, 3};
+  // tree::BinarySearchTree<int> t = bt.toBinarySearchTree();
+  tree::BinarySearchTree<int> t = bt.toBinarySearchTree();
+  // t.eraseAll(2);
+  // t.eraseAll(3);
   // tree::BinaryTree<int> t{v.begin(), v.end()};
   // tree::BinarySearchTree<int> t;
   const auto& null = std::nullopt;
