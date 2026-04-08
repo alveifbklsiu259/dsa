@@ -1,5 +1,6 @@
 #include "./algorithm/sort/sort.hpp"
 #include "data_structure/array/dynamic_array.hpp"
+#include "data_structure/array/static_array.hpp"
 #include "data_structure/hash_map/hash_map.hpp"
 #include "data_structure/hash_set/hash_set.hpp"
 #include "data_structure/queue/deque.hpp"
@@ -64,14 +65,15 @@ struct TaskCompare {
 void foo(tree::Node<int>& node) { std::cout << node.value() << ' '; };
 void baz(tree::Node<int>& node, size_t level) { std::cout << node.value() << ' '; };
 void bar(tree::Node<Task>& node) { std::cout << node.value() << ' '; };
-
 int main() {
   array::DynamicArray<int> preorder{9, 9, 20, 15, 7};  // root -> left -> right
   array::DynamicArray<int> inorder{9, 9, 15, 20, 7};   // left -> root -> right
   array::DynamicArray<int> postorder{9, 15, 7, 20, 9}; // left -> right -> root
   array::DynamicArray<int> levelorder{9, 9, 20, 15, 7};
 
-  std::vector<int> s;
+  // array::StaticArray<int, 2> sa{1, 2};
+  // array::StaticArray ssa = {1,2,3};
+  // array::StaticArray ssa2{1,2,3};
   //   9
   //  / \
   // 9   20

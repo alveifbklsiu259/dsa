@@ -1,5 +1,5 @@
 #pragma once
-#include <array>
+#include "../array/static_array.hpp"
 #include <cstddef>
 
 namespace queue {
@@ -7,7 +7,7 @@ template <typename T, size_t N> class StaticQueue {
   template <typename, size_t> friend class Queue;
 
 private:
-  alignas(T) std::array<std::byte, sizeof(T) * N> m_data;
+  alignas(T) array::StaticArray<std::byte, sizeof(T) * N> m_data;
   size_t m_capacity = N;
   size_t m_length = 0;
   size_t m_head = 0;

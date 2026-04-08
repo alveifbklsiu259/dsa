@@ -32,8 +32,6 @@ namespace detail {
 
 // check priority queue, should we make left,right, parent constexpr?
 // copy/move constructors, swap method for hashmap
-// should rewrite static array, it uses array underneath, also Deque uses std::array, should switch to
-// array::StaticArray
 
 /* - Constructing expression trees (prefix notation).
 - postfix evaluation

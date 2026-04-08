@@ -1,5 +1,5 @@
 #pragma once
-#include <array>
+#include "../array/static_array.hpp"
 #include <cstddef>
 
 namespace stack {
@@ -10,7 +10,7 @@ template <typename T, size_t N> class StaticStack {
 private:
   size_t m_capacity = N;
   size_t m_length = 0;
-  alignas(T) std::array<std::byte, sizeof(T) * N> m_data;
+  alignas(T) array::StaticArray<std::byte, sizeof(T) * N> m_data;
 
   T* getBuffer(size_t i) noexcept;
   const T* getBuffer(size_t i) const noexcept;

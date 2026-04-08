@@ -1,6 +1,6 @@
 #pragma once
 #include "../array/dynamic_array.hpp"
-#include <array>
+#include "../array/static_array.hpp"
 #include <cstddef>
 #include <gsl/gsl>
 #include <iostream>
@@ -38,7 +38,7 @@ private:
     ~Block() = default;
 
   private:
-    alignas(T) std::array<std::byte, sizeof(T) * blockSize> m_block;
+    alignas(T) array::StaticArray<std::byte, sizeof(T) * blockSize> m_block;
   };
 
   class IndexMap {
