@@ -39,8 +39,8 @@ class HashMap {
 private:
   constexpr static const double maxLoadFactor = 0.75;
   using BucketList = linkedlist::SinglyLinkedList<HashMapKeyVal<K, V>>;
-  Hasher m_hasher;
-  KeyEqual m_keyEqual;
+  [[no_unique_address]] Hasher m_hasher;
+  [[no_unique_address]] KeyEqual m_keyEqual;
   size_t m_length = 0;
   array::DynamicArray<BucketList> m_table;
 
@@ -156,12 +156,12 @@ public:
   HashMap() : m_table(array::DynamicArray<BucketList>{2}) {}
 
   HashMap(size_t n, Hasher hasher = {}, KeyEqual eq = {})
-      : m_table(array::DynamicArray<BucketList>{n}), m_hasher(hasher), m_keyEqual(eq) {}
+      : m_table(array::DynamicArray<BucketList>{n}), m_hasher(std::move(hasher)), m_keyEqual(std::move(eq)) {}
 
   template <std::input_iterator InputIt>
     requires std::constructible_from<HashMapKeyVal<K, V>, std::iter_value_t<InputIt>>
   HashMap(InputIt first, InputIt last, size_t n = 2, Hasher hasher = {}, KeyEqual eq = {})
-      : HashMap(n, hasher, eq) {
+      : HashMap(n, std::move(hasher), std::move(eq)) {
     for (auto it = first; it != last; ++it) { emplace((*it).first, (*it).second); }
   }
 
@@ -253,6 +253,9 @@ public:
 
   bool operator!=(const HashMap& other) { return !(*this == other); }
 
+  constexpr Hasher hashFunction() const noexcept { return m_hasher; }
+  constexpr KeyEqual keyEq() const noexcept { return m_keyEqual; }
+
   Iterator begin() noexcept {
     for (size_t i = 0; i < m_table.capacity(); i++) {
       typename BucketList::Iterator it = m_table[i].begin();
@@ -272,6 +275,17 @@ public:
   Iterator end() noexcept { return Iterator(this, m_table.capacity(), typename BucketList::Iterator()); }
   ConstIterator end() const noexcept {
     return ConstIterator(this, m_table.capacity(), typename BucketList::ConstIterator());
+  }
+
+  // for ADL
+  constexpr friend void swap(HashMap& a, HashMap& b) noexcept { a.swap(b); }
+
+  constexpr void swap(HashMap& other) noexcept {
+    using std::swap;
+    swap(m_hasher, other.m_hasher);
+    swap(m_keyEqual, other.m_keyEqual);
+    swap(m_length, other.m_length);
+    swap(m_table, other.m_table);
   }
 };
 } // namespace hashmap

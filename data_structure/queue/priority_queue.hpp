@@ -1,6 +1,7 @@
 #pragma once
 #include "../array/dynamic_array.hpp"
 #include <functional>
+#include <stdexcept>
 namespace queue {
 
 namespace detail {
@@ -42,7 +43,7 @@ template <typename T, typename S = array::DynamicArray<T>, typename Compare = st
 class PriorityQueue {
 private:
   S m_data;
-  Compare m_compare;
+  [[no_unique_address]] Compare m_compare;
   size_t parent(size_t idx) { return idx == 0 ? 0 : (idx - 1) / 2; }
   size_t left(size_t idx) { return (2 * idx) + 1; }
   size_t right(size_t idx) { return (2 * idx) + 2; }
@@ -113,27 +114,27 @@ public:
 
   constexpr PriorityQueue() = default;
 
-  constexpr PriorityQueue(const Compare& compare, S&& seq = S{})
-      : m_data(std::move(seq)), m_compare(compare) {}
+  constexpr PriorityQueue(S&& seq = S{}, Compare compare = {})
+      : m_data(std::move(seq)), m_compare(std::move(compare)) {}
 
-  constexpr PriorityQueue(const Compare& compare, const S& seq) : m_data(seq), m_compare(compare) {}
+  constexpr PriorityQueue(const S& seq, Compare compare = {}) : m_data(seq), m_compare(std::move(compare)) {}
 
   template <std::input_iterator InputIt>
-  PriorityQueue(InputIt first, InputIt last, const Compare& compare = Compare{}) : m_compare(compare) {
+  PriorityQueue(InputIt first, InputIt last, Compare compare = {}) : m_compare(std::move(compare)) {
     appendRange(first, last);
     bottomUpHeapify();
   }
 
   template <std::input_iterator InputIt>
-  PriorityQueue(InputIt first, InputIt last, const Compare& compare, const S& seq)
-      : m_compare(compare), m_data(seq) {
+  PriorityQueue(InputIt first, InputIt last, const S& seq, Compare compare = {})
+      : m_compare(std::move(compare)), m_data(seq) {
     appendRange(first, last);
     bottomUpHeapify();
   }
 
   template <std::input_iterator InputIt>
-  PriorityQueue(InputIt first, InputIt last, const Compare& compare, S&& seq)
-      : m_compare(compare), m_data(std::move(seq)) {
+  PriorityQueue(InputIt first, InputIt last, S&& seq, Compare compare = {})
+      : m_compare(std::move(compare)), m_data(std::move(seq)) {
     appendRange(first, last);
     bottomUpHeapify();
   }
@@ -169,14 +170,14 @@ public:
 
   void pop() {
     using std::swap;
-    if (empty()) throw std::underflow_error("Priority Queue is empty.");
+    if (empty()) throw std::out_of_range("Priority Queue is empty.");
     swap(m_data[headIndex()], m_data[tailIndex()]);
     popBackData();
     if (!empty()) bubbleDown(headIndex());
   }
 
   [[nodiscard]] const_reference top() const {
-    if (empty()) throw std::underflow_error("Priority Queue is empty.");
+    if (empty()) throw std::out_of_range("Priority Queue is empty.");
     return m_data[headIndex()];
   }
 

@@ -1,9 +1,9 @@
 #pragma once
-#include "./exception.hpp"
 #include "./iterator.hpp"
 #include <concepts>
 #include <initializer_list>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -96,7 +96,7 @@ public:
   }
 
   void popFront() {
-    if (m_head == nullptr) throw EmptyListException();
+    if (m_head == nullptr) throw std::out_of_range("List is empty");
     NodeType* temp = m_head;
     m_head = m_head->next;
     delete temp; // NOLINT
@@ -104,12 +104,12 @@ public:
   }
 
   ValueType& front() {
-    if (m_head == nullptr) throw EmptyListException();
+    if (m_head == nullptr) throw std::out_of_range("List is empty");
     return m_head->value;
   }
 
   const ValueType& front() const {
-    if (m_head == nullptr) throw EmptyListException();
+    if (m_head == nullptr) throw std::out_of_range("List is empty");
     return m_head->value;
   }
 

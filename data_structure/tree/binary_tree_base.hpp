@@ -10,25 +10,23 @@ template <typename T> class Node; // forward declaration, definition in node.hpp
 namespace detail {
 // TODO:
 
-//  findLast, eraseLast, insertAll(initializer_list)
-//  implement ordered map (std::map, std::multimap) using BST(AVL or red-black)
-
-// Implement different iterators:
-// create a generic BinaryTreeIterator with different sub-classes
-// - inIter
-// - preIter
-// - postIter
-// - levelIter
-// also maybe their reverse version
-// - see https://leetcode.com/problems/binary-search-tree-iterator/description/
-// Then methods that return Node<T>* can return iterator e.g. find
-// then the BinaryTree template can take another parameter enum IterType that the clients can specify
-// which default iterator to be returned, e.g. find returns InIter by default
-// but also allow specify which iterator to be returned at the method level,
-// e.g. find(const T& val, IterType = InIter)
-
-// serialize/deserialize (https://leetcode.com/explore/learn/card/data-structure-tree/133/conclusion/995/),
-// just a variant of to/fromArrayRepresentation
+// - findLast, eraseLast, insertAll(initializer_list)
+// - implement ordered map (std::map, std::multimap) using BST(AVL or red-black)
+// - Implement different iterators:
+// - create a generic BinaryTreeIterator with different sub-classes, also maybe their reverse version
+//   example: https://leetcode.com/problems/binary-search-tree-iterator/description/
+//   - inIter
+//   - preIter
+//   - postIter
+//   - levelIter
+//   Then methods that return Node<T>* can return iterator e.g. find
+//   then the BinaryTree template can take another parameter enum IterType that the clients can specify
+//   which default iterator to be returned, e.g. find returns InIter by default
+//   but also allow specify which iterator to be returned at the method level,
+//   e.g. find(const T& val, IterType = InIter)
+// - serialize/deserialize (https://leetcode.com/explore/learn/card/data-structure-tree/133/conclusion/995/),
+// - [Boundary Traversal of binary tree](https://www.geeksforgeeks.org/dsa/boundary-traversal-of-binary-tree/)
+// - [Diagonal Traversal of Binary Tree](https://www.geeksforgeeks.org/dsa/diagonal-traversal-of-binary-tree/)
 
 // check priority queue, should we make left,right, parent constexpr?
 // copy/move constructors, swap method for hashmap
@@ -74,12 +72,6 @@ class BinaryTreeBase {
 protected:
   constexpr void setRoot(gsl::owner<Node<T>*> node) noexcept { m_root = node; }
   constexpr void setRoot(std::nullptr_t) noexcept { m_root = static_cast<gsl::owner<Node<T>*>>(nullptr); }
-
-  constexpr Hasher getHasher() noexcept { return m_hasher; }
-  constexpr Hasher getHasher() const noexcept { return m_hasher; }
-
-  constexpr KeyEqual getKeyEqual() noexcept { return m_keyEqual; }
-  constexpr KeyEqual getKeyEqual() const noexcept { return m_keyEqual; }
 
   constexpr bool keyEqual(const T& a, const T& b) const noexcept { return m_keyEqual(a, b); }
 
@@ -138,9 +130,9 @@ private:
     constexpr bool operator()(NodeType& /*_node*/, size_t /*_level*/) const noexcept { return false; }
   };
 
+  [[no_unique_address]] Hasher m_hasher;
+  [[no_unique_address]] KeyEqual m_keyEqual;
   gsl::owner<Node<T>*> m_root = nullptr;
-  Hasher m_hasher;
-  KeyEqual m_keyEqual;
 
   template <
       typename NodeType, std::invocable<NodeType&> Callback,
@@ -613,7 +605,8 @@ private:
   }
 
 public:
-  constexpr BinaryTreeBase(Hasher hasher = {}, KeyEqual eq = {}) : m_hasher(hasher), m_keyEqual(eq) {}
+  constexpr BinaryTreeBase(Hasher hasher = {}, KeyEqual eq = {})
+      : m_hasher(std::move(hasher)), m_keyEqual(std::move(eq)) {}
 
   constexpr BinaryTreeBase(const BinaryTreeBase& other)
       : m_hasher(other.m_hasher), m_keyEqual(other.m_keyEqual) {
@@ -646,14 +639,14 @@ public:
 
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
   constexpr bool inorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
-    return inorderMorris(root(), std::forward<Callback>(cb), shouldBreak);
+    return inorderMorris(root(), std::forward<Callback>(cb), std::move(shouldBreak));
   }
 
   template <
       std::invocable<const Node<T>&> Callback,
       std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
   constexpr bool inorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
-    return inorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
+    return inorderIterative(root(), std::forward<Callback>(cb), std::move(shouldBreak));
   }
 
   /**
@@ -663,38 +656,38 @@ public:
    */
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
   constexpr bool inorderReverseTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
-    return inorderReverseMorris(root(), std::forward<Callback>(cb), shouldBreak);
+    return inorderReverseMorris(root(), std::forward<Callback>(cb), std::move(shouldBreak));
   }
 
   template <
       std::invocable<const Node<T>&> Callback,
       std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
   constexpr bool inorderReverseTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
-    return inorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
+    return inorderIterative(root(), std::forward<Callback>(cb), std::move(shouldBreak));
   }
 
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
   constexpr bool preorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
-    return preorderMorris(root(), std::forward<Callback>(cb), shouldBreak);
+    return preorderMorris(root(), std::forward<Callback>(cb), std::move(shouldBreak));
   }
 
   template <
       std::invocable<const Node<T>&> Callback,
       std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
   constexpr bool preorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
-    return preorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
+    return preorderIterative(root(), std::forward<Callback>(cb), std::move(shouldBreak));
   }
 
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
   constexpr bool postorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
-    return postorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
+    return postorderIterative(root(), std::forward<Callback>(cb), std::move(shouldBreak));
   }
 
   template <
       std::invocable<const Node<T>&> Callback,
       std::predicate<const Node<T>&> ShouldBreak = DefaultBreak<const Node<T>>>
   constexpr bool postorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
-    return postorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
+    return postorderIterative(root(), std::forward<Callback>(cb), std::move(shouldBreak));
   }
 
   template <std::invocable<Node<T>&> Callback, std::predicate<Node<T>&> ShouldBreak = DefaultBreak<Node<T>>>
@@ -723,7 +716,7 @@ public:
       std::predicate<Node<T>&, size_t /* level, starts from 0 */> ShouldBreak =
           DefaultBreakWithLevel<Node<T>>>
   constexpr bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) {
-    return levelorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
+    return levelorderIterative(root(), std::forward<Callback>(cb), std::move(shouldBreak));
   }
 
   template <
@@ -731,7 +724,7 @@ public:
       std::predicate<const Node<T>&, size_t /* level, starts from 0 */> ShouldBreak =
           DefaultBreakWithLevel<const Node<T>>>
   constexpr bool levelorderTraverse(Callback&& cb, ShouldBreak shouldBreak = {}) const {
-    return levelorderIterative(root(), std::forward<Callback>(cb), shouldBreak);
+    return levelorderIterative(root(), std::forward<Callback>(cb), std::move(shouldBreak));
   }
 
   constexpr array::DynamicArray<Node<T>*> getArrayRepresentation() const {
@@ -917,6 +910,9 @@ public:
     }
     return true;
   }
+
+  constexpr Hasher hashFunction() const noexcept { return m_hasher; }
+  constexpr KeyEqual keyEq() const noexcept { return m_keyEqual; }
 
   [[nodiscard]] constexpr bool empty() const noexcept { return root() == nullptr; }
 

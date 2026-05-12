@@ -5,6 +5,7 @@
 #include <gsl/gsl>
 #include <iostream>
 #include <iterator>
+#include <stdexcept>
 
 #ifndef NDEBUG
 constexpr int debugValue = 9999;
@@ -243,6 +244,7 @@ private:
 
   public:
     template <bool IsConst> class IndexMapIterator {
+      // for conversion constructor
       template <bool> friend class IndexMapIterator;
       friend class IndexMap;
       template <typename> friend class Deque;
@@ -452,7 +454,7 @@ private:
     }
 
     void destroyAtHead() {
-      if (empty()) throw std::underflow_error("Head block is empty");
+      if (empty()) throw std::out_of_range("Head block is empty");
       destroyAt(getElementHeadGlobal());
       bool blockToBeEmpty = m_elementHeadLocal == (getElementsPerBlock() - 1);
       if (blockToBeEmpty) {
@@ -468,7 +470,7 @@ private:
     }
 
     void destroyAtTail() {
-      if (empty()) throw std::underflow_error("Tail block is empty");
+      if (empty()) throw std::out_of_range("Tail block is empty");
       bool blockToBeEmpty = m_elementTailLocal == 1;
       destroyAt(getTailElementGlobalIndex());
 
@@ -483,22 +485,22 @@ private:
     }
 
     T& head() {
-      if (empty()) throw std::underflow_error("Head block is empty");
+      if (empty()) throw std::out_of_range("Head block is empty");
       return *slotAt(getElementHeadGlobal());
     }
 
     const T& head() const {
-      if (empty()) throw std::underflow_error("Head block is empty");
+      if (empty()) throw std::out_of_range("Head block is empty");
       return *slotAt(getElementHeadGlobal());
     }
 
     T& tail() {
-      if (empty()) throw std::underflow_error("Tail block is empty");
+      if (empty()) throw std::out_of_range("Tail block is empty");
       return *slotAt(getTailElementGlobalIndex());
     }
 
     const T& tail() const {
-      if (empty()) throw std::underflow_error("Tail block is empty");
+      if (empty()) throw std::out_of_range("Tail block is empty");
       return *slotAt(getTailElementGlobalIndex());
     }
 
@@ -787,32 +789,32 @@ public:
   void pushFront(T&& val) { emplaceFront(std::move(val)); }
 
   void popFront() {
-    if (empty()) throw std::underflow_error("Dqeue is empty");
+    if (empty()) throw std::out_of_range("Dqeue is empty");
     m_indexMap.destroyAtHead();
   }
 
   void popBack() {
-    if (empty()) throw std::underflow_error("Deque is empty");
+    if (empty()) throw std::out_of_range("Deque is empty");
     m_indexMap.destroyAtTail();
   }
 
   reference front() {
-    if (empty()) throw std::underflow_error("Deque is empty");
+    if (empty()) throw std::out_of_range("Deque is empty");
     return m_indexMap.head();
   }
 
   const_reference front() const {
-    if (empty()) throw std::underflow_error("Deque is empty");
+    if (empty()) throw std::out_of_range("Deque is empty");
     return m_indexMap.head();
   }
 
   reference back() {
-    if (empty()) throw std::underflow_error("Deque is empty");
+    if (empty()) throw std::out_of_range("Deque is empty");
     return m_indexMap.tail();
   }
 
   const_reference back() const {
-    if (empty()) throw std::underflow_error("Deque is empty");
+    if (empty()) throw std::out_of_range("Deque is empty");
     return m_indexMap.tail();
   }
 
@@ -859,8 +861,8 @@ public:
   void printInfo() const noexcept { m_indexMap.printInfo(); }
 #endif
 
-  [[nodiscard]] bool empty() noexcept { return size() == 0; }
-  [[nodiscard]] size_t size() noexcept { return m_indexMap.getElementSize(); }
+  [[nodiscard]] bool empty() const noexcept { return size() == 0; }
+  [[nodiscard]] size_t size() const noexcept { return m_indexMap.getElementSize(); }
 
   Iterator begin() noexcept { return m_indexMap.begin(); }
   ConstIterator begin() const noexcept { return m_indexMap.begin(); }

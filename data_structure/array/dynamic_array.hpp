@@ -13,16 +13,18 @@ private:
   size_t m_length = 0;
   size_t m_capacity = 0;
 
-  void checkBound(size_t index) const {
+  constexpr void checkBound(size_t index) const {
     if (index >= m_length)
       throw std::out_of_range(
           "Index out of bounds, index: " + std::to_string(index) + ", size: " + std::to_string(m_length)
       );
   }
 
-  void assertBound(size_t index) const noexcept { assert(index < m_length && "Index out of bounds"); }
+  constexpr void assertBound(size_t index) const noexcept {
+    assert(index < m_length && "Index out of bounds");
+  }
 
-  void release() noexcept {
+  constexpr void release() noexcept {
     clear();
     deallocate(m_data);
     m_data = nullptr;
@@ -30,14 +32,14 @@ private:
     m_capacity = 0;
   }
 
-  void deepCopy(const DynamicArray<T>& other) {
+  constexpr void deepCopy(const DynamicArray<T>& other) {
     m_length = other.m_length;
     m_capacity = other.m_capacity;
     m_data = allocate(m_capacity);
     for (size_t i = 0; i < m_length; i++) new (m_data + i) T(other.m_data[i]);
   }
 
-  void move(DynamicArray<T>&& other) noexcept { // NOLINT
+  constexpr void move(DynamicArray<T>&& other) noexcept { // NOLINT
     m_length = other.m_length;
     m_capacity = other.m_capacity;
     m_data = other.m_data;
@@ -55,6 +57,18 @@ private:
     if (ptr == nullptr) return;
     ::operator delete(ptr, std::align_val_t{alignof(T)});
   }
+
+  // constexpr static T* allocate(size_t capacity) noexcept {
+  //   if (capacity == 0) return nullptr;
+  //   return std::allocator<T>{}.allocate(capacity);
+  // }
+  //
+  // constexpr static void deallocate(T* ptr, size_t capacity) noexcept {
+  //   if (ptr == nullptr) return;
+  //
+  //   // This IS constexpr-friendly
+  //   std::allocator<T>{}.deallocate(ptr, capacity);
+  // }
 
 public:
   template <bool IsConst> class DynamicArrayIterator {
@@ -150,18 +164,20 @@ public:
 
   using value_type = T;
   using size_type = size_t;
-  using reference = T&;
-  using const_reference = const T&;
+  using reference = value_type&;
+  using const_reference = const value_type&;
+  using pointer = value_type*;
+  using const_pointer = const value_type*;
   using Iterator = DynamicArrayIterator<false>;
   using ConstIterator = DynamicArrayIterator<true>;
   using ReverseIterator = std::reverse_iterator<Iterator>;
   using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
 
-  DynamicArray() : m_capacity(2), m_data(allocate(2)) {};
+  constexpr DynamicArray() : m_capacity(2), m_data(allocate(2)) {};
 
-  DynamicArray(size_t size) : DynamicArray(size, T{}) {}
+  constexpr DynamicArray(size_t size) : DynamicArray(size, T{}) {}
 
-  DynamicArray(size_t size, const T& value) : m_capacity(size), m_length(size) {
+  constexpr DynamicArray(size_t size, const T& value) : m_capacity(size), m_length(size) {
     m_data = allocate(m_capacity);
     try {
       std::uninitialized_fill_n(m_data, m_length, value);
@@ -171,11 +187,11 @@ public:
     }
   }
 
-  DynamicArray(std::initializer_list<T> init) : DynamicArray(init.begin(), init.end()) {}
+  constexpr DynamicArray(std::initializer_list<T> init) : DynamicArray(init.begin(), init.end()) {}
 
   template <std::input_iterator InputIt>
     requires std::constructible_from<T, std::iter_value_t<InputIt>>
-  DynamicArray(InputIt first, InputIt last) {
+  constexpr DynamicArray(InputIt first, InputIt last) {
     size_t size = std::distance(first, last);
     if (size <= 0) {
       m_capacity = 0;
@@ -201,34 +217,34 @@ public:
     }
   }
 
-  DynamicArray(const DynamicArray<T>& other) { deepCopy(other); }; // NOLINT
+  constexpr DynamicArray(const DynamicArray<T>& other) { deepCopy(other); }; // NOLINT
 
-  DynamicArray(DynamicArray<T>&& other) noexcept { move(std::move(other)); }; // NOLINT
+  constexpr DynamicArray(DynamicArray<T>&& other) noexcept { move(std::move(other)); }; // NOLINT
 
-  DynamicArray<T>& operator=(const DynamicArray<T>& other) {
+  constexpr DynamicArray<T>& operator=(const DynamicArray<T>& other) {
     if (&other == this) return *this;
     release();
     deepCopy(other);
     return *this;
   };
 
-  DynamicArray<T>& operator=(DynamicArray<T>&& other) noexcept {
+  constexpr DynamicArray<T>& operator=(DynamicArray<T>&& other) noexcept {
     if (&other == this) return *this;
     release();
     move(std::move(other));
     return *this;
   };
 
-  ~DynamicArray() noexcept { release(); };
+  constexpr ~DynamicArray() noexcept { release(); };
 
-  void clear() noexcept {
+  constexpr void clear() noexcept {
     for (size_t i = 0; i < m_length; i++) { m_data[i].~T(); }
     m_length = 0;
   }
 
-  Iterator erase(ConstIterator pos) { return erase(pos, pos + 1); }
+  constexpr Iterator erase(ConstIterator pos) { return erase(pos, pos + 1); }
 
-  Iterator erase(ConstIterator first, ConstIterator last) {
+  constexpr Iterator erase(ConstIterator first, ConstIterator last) {
     if (first < cbegin() || last > cend() || last < first)
       throw std::out_of_range("Erase positions out of range");
 
@@ -255,7 +271,7 @@ public:
 
   void popBack() { erase(cend() - 1); }
 
-  template <typename... Args> Iterator emplace(ConstIterator pos, Args&&... args) {
+  template <typename... Args> constexpr Iterator emplace(ConstIterator pos, Args&&... args) {
     if (pos < cbegin() || pos > cend()) throw std::out_of_range("Emplace Position out of range");
 
     // this has to happen before calling reserve because reserve may render pos dangling.
@@ -280,14 +296,14 @@ public:
     return Iterator{m_data + idx};
   }
 
-  template <typename... Args> T& emplaceBack(Args&&... args) {
+  template <typename... Args> constexpr T& emplaceBack(Args&&... args) {
     return *emplace(cend(), std::forward<Args>(args)...);
   }
 
-  void pushBack(const T& value) { emplaceBack(value); }
-  void pushBack(T&& value) { emplaceBack(std::move(value)); }
+  constexpr void pushBack(const T& value) { emplaceBack(value); }
+  constexpr void pushBack(T&& value) { emplaceBack(std::move(value)); }
 
-  void resize(size_t newSize) {
+  constexpr void resize(size_t newSize) {
     if (newSize > m_length) {
       if (newSize > m_capacity) reserve(std::max(newSize, static_cast<size_t>(m_capacity * 2)));
       for (size_t i = m_length; i < newSize; i++) new (m_data + i) T{};
@@ -297,7 +313,7 @@ public:
     m_length = newSize;
   }
 
-  void reserve(size_t newCapacity) {
+  constexpr void reserve(size_t newCapacity) {
     if (newCapacity <= m_capacity) return;
     size_t i = 0;
     T* newData = allocate(newCapacity);
@@ -360,6 +376,9 @@ public:
   [[nodiscard]] constexpr size_t size() const noexcept { return m_length; };
   [[nodiscard]] constexpr size_t capacity() const noexcept { return m_capacity; };
   [[nodiscard]] constexpr bool empty() const noexcept { return m_length == 0; }
+
+  constexpr pointer data() noexcept { return m_data; }
+  constexpr const_pointer data() const noexcept { return m_data; }
 
   constexpr Iterator begin() noexcept { return Iterator{m_data}; }
   constexpr ConstIterator begin() const noexcept { return ConstIterator{m_data}; }

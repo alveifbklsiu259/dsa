@@ -134,7 +134,7 @@ STACK_TEMPLATE void StaticStack<T, N>::push(const T& value) { emplace(value); }
 STACK_TEMPLATE void StaticStack<T, N>::push(T&& value) { emplace(std::move(value)); }
 
 STACK_TEMPLATE T StaticStack<T, N>::pop() {
-  if (empty()) throw std::underflow_error("Stack is empty");
+  if (empty()) throw std::out_of_range("Stack is empty");
   m_length--;
   constexpr bool preferMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
   T top = preferMove ? std::move(*getBuffer(m_length)) : *getBuffer(m_length);
@@ -143,7 +143,7 @@ STACK_TEMPLATE T StaticStack<T, N>::pop() {
 }
 
 STACK_TEMPLATE const T& StaticStack<T, N>::top() const {
-  if (empty()) throw std::underflow_error("Stack is empty");
+  if (empty()) throw std::out_of_range("Stack is empty");
   return *getBuffer(m_length - 1);
 }
 

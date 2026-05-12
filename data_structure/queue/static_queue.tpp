@@ -1,3 +1,4 @@
+#pragma once
 #include "./static_queue.hpp"
 #include <cstddef>
 #include <memory>
@@ -113,7 +114,7 @@ QUEUE_TEMPLATE void StaticQueue<T, N>::push(const T& val) { emplace(val); }
 QUEUE_TEMPLATE void StaticQueue<T, N>::push(T&& val) { emplace(std::move(val)); }
 
 QUEUE_TEMPLATE T StaticQueue<T, N>::pop() {
-  if (empty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::out_of_range("Queue is empty");
 
   constexpr bool preferMove = std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>;
   T data = preferMove ? std::move(*getBuffer(m_head)) : *getBuffer(m_head);
@@ -124,12 +125,12 @@ QUEUE_TEMPLATE T StaticQueue<T, N>::pop() {
 }
 
 QUEUE_TEMPLATE const T& StaticQueue<T, N>::front() const {
-  if (empty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::out_of_range("Queue is empty");
   return *getBuffer(m_head);
 }
 
 QUEUE_TEMPLATE const T& StaticQueue<T, N>::back() const {
-  if (empty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::out_of_range("Queue is empty");
   return *getBuffer(m_tail);
 }
 

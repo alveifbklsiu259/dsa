@@ -40,7 +40,7 @@ template <
   requires detail::Hasher<T, Hasher> && detail::KeyEqual<T, KeyEqual> && detail::Comparator<T, Compare>
 class BinarySearchTree : public detail::BinaryTreeBase<T, Hasher, KeyEqual> {
 private:
-  Compare m_compare;
+  [[no_unique_address]] Compare m_compare;
   using ConstNodeWithParent =
       typename detail::BinaryTreeBase<T, Hasher, KeyEqual>::template NodeWithParent<const Node<T>*>;
 
@@ -194,19 +194,20 @@ public:
   BinarySearchTree(
       std::initializer_list<T> values, Hasher hasher = {}, KeyEqual eq = {}, Compare compare = {}
   )
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(compare) {
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(std::move(compare)) {
     fromValues(values);
   }
 
   template <std::input_iterator InputIt>
     requires std::constructible_from<T, std::iter_value_t<InputIt>>
   BinarySearchTree(InputIt first, InputIt last, Hasher hasher = {}, KeyEqual eq = {}, Compare compare = {})
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(compare) {
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(std::move(compare)) {
     fromValues(first, last);
   }
 
   explicit BinarySearchTree(const BinaryTree<T, Hasher, KeyEqual>& bt, Compare compare = {})
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(bt.getHasher(), bt.getKeyEqual()), m_compare(compare) {
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(bt.hashFunction(), bt.keyEq()),
+        m_compare(std::move(compare)) {
     array::DynamicArray<T> values;
     auto getValue = [&](auto&& node) { values.emplaceBack(node.value()); };
     bt.levelorderTraverse(getValue);
@@ -216,7 +217,8 @@ public:
   }
 
   explicit BinarySearchTree(BinaryTree<T, Hasher, KeyEqual>&& bt, Compare compare = {}) // NOLINT
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(bt.getHasher(), bt.getKeyEqual()), m_compare(compare) {
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(bt.hashFunction(), bt.keyEq()),
+        m_compare(std::move(compare)) {
     array::DynamicArray<T> values;
     auto getValue = [&](auto&& node) { values.emplaceBack(std::move(node.value())); };
     bt.levelorderTraverse(getValue);
@@ -226,7 +228,7 @@ public:
   }
 
   BinarySearchTree(Hasher hasher = {}, KeyEqual eq = {}, Compare compare = {})
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(compare) {}
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(hasher, eq), m_compare(std::move(compare)) {}
 
   BinarySearchTree(const BinarySearchTree& other)
       : detail::BinaryTreeBase<T, Hasher, KeyEqual>(other), m_compare(other.m_compare) {}

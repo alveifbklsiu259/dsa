@@ -20,8 +20,6 @@ template <Streamable T> std::string genericToString(const T& val) {
 
 } // namespace detail
 
-// strategy pattern?
-
 class TreeVisualizer {
 private:
   size_t m_minNodeSize;
@@ -37,7 +35,8 @@ private:
     return static_cast<size_t>(std::pow(2, level));
   }
 
-  template <typename T> size_t findMinNodeSize(const detail::BinaryTreeBase<T>& tree) const {
+  template <typename T, typename U, typename V>
+  size_t findMinNodeSize(const detail::BinaryTreeBase<T, U, V>& tree) const {
     size_t minNodeSize = m_minNodeSize;
     auto checkSize = [&](const Node<T>& node) {
       minNodeSize = std::max(minNodeSize, detail::genericToString(node.value()).size());
@@ -164,8 +163,10 @@ public:
    *
    */
 
-  template <detail::Streamable T>
-  void visualize(const detail::BinaryTreeBase<T>& tree, std::optional<bool> displayEmptyNode = std::nullopt) {
+  template <detail::Streamable T, typename U, typename V>
+  void visualize(
+      const detail::BinaryTreeBase<T, U, V>& tree, std::optional<bool> displayEmptyNode = std::nullopt
+  ) {
     const Node<T>* root = tree.root();
     if (root == nullptr) {
       std::cout << "Tree is empty" << '\n';

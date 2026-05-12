@@ -7,6 +7,7 @@
 #include "./detail.hpp"
 #include "./node.hpp"
 #include "binary_search_tree.hpp"
+#include <concepts>
 #include <gsl/gsl>
 #include <optional>
 
@@ -67,10 +68,10 @@ private:
   void validateSequences(const Seq& s1, const Seq& s2) const {
     if (std::size(s1) != std::size(s2)) throw std::invalid_argument("Two sequences are inconsistent");
 
-    hashmap::HashMap<T, size_t, Hasher, KeyEqual> m1{2, this->getHasher(), this->getKeyEqual()};
+    hashmap::HashMap<T, size_t, Hasher, KeyEqual> m1{2, this->hashFunction(), this->keyEq()};
     for (const T& val : s1) m1[val]++;
 
-    hashmap::HashMap<T, size_t, Hasher, KeyEqual> m2{2, this->getHasher(), this->getKeyEqual()};
+    hashmap::HashMap<T, size_t, Hasher, KeyEqual> m2{2, this->hashFunction(), this->keyEq()};
     for (const T& val : s2) m2[val]++;
 
     if (m1 != m2) throw std::invalid_argument("Two sequences are inconsistent");
@@ -332,21 +333,21 @@ public:
   using detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase;
 
   BinaryTree(std::initializer_list<std::optional<T>> list, Hasher hasher = {}, KeyEqual eq = {})
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(hasher, eq) {
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(std::move(hasher), std::move(eq)) {
     fromArrayRepresentation(list);
   }
 
   template <typename Seq>
     requires detail::RandomAccessOptionalSequence<T, Seq>
   BinaryTree(Seq seq, Hasher hasher = {}, KeyEqual eq = {})
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(hasher, eq) {
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(std::move(hasher), std::move(eq)) {
     fromArrayRepresentation(seq);
   }
 
   template <std::input_iterator InputIt>
     requires std::constructible_from<std::optional<T>, std::iter_value_t<InputIt>>
   BinaryTree(InputIt first, InputIt last, Hasher hasher = {}, KeyEqual eq = {})
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(hasher, eq) {
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(std::move(hasher), std::move(eq)) {
     fromArrayRepresentation(first, last);
   }
 
@@ -445,7 +446,48 @@ public:
   template <typename Compare = std::less<>>
     requires detail::Comparator<T, Compare>
   BinarySearchTree<T, Hasher, KeyEqual, Compare> toBinarySearchTree(Compare compare = {}) {
-    return BinarySearchTree<T, Hasher, KeyEqual, Compare>{*this, compare};
+    return BinarySearchTree<T, Hasher, KeyEqual, Compare>{*this, std::move(compare)};
+  }
+
+  void merge(const BinaryTree& other)
+    requires requires(T a, T b) {
+      { a + b } -> std::convertible_to<T>;
+    }
+  {
+    Node<T>* root = this->root();
+    const Node<T>* otherRoot = other.root();
+    if (otherRoot == nullptr) return;
+    if (root == nullptr) {
+      this->setRoot(new Node<T>(other.root()->value()));
+      root = this->root();
+    } else {
+      root->setValue(root->value() + otherRoot->value());
+    }
+
+    queue::Deque<std::pair<Node<T>*, const Node<T>*>> q{{root, otherRoot}};
+
+    while (!q.empty()) {
+      auto [cur, otherCur] = q.front();
+      q.popFront();
+
+      if (otherCur->left() != nullptr) {
+        if (cur->left() == nullptr) {
+          cur->setLeft(new Node<T>(otherCur->left()->value()));
+        } else {
+          cur->left()->setValue(cur->left()->value() + otherCur->left()->value());
+        }
+        q.pushBack({cur->left(), otherCur->left()});
+      }
+
+      if (otherCur->right() != nullptr) {
+        if (cur->right() == nullptr) {
+          cur->setRight(new Node<T>(otherCur->right()->value()));
+        } else {
+          cur->right()->setValue(cur->right()->value() + otherCur->right()->value());
+        }
+        q.pushBack({cur->right(), otherCur->right()});
+      }
+    }
   }
 };
 

@@ -4,6 +4,12 @@
 #include <cstdint>
 #include <iterator>
 
+// TODO:
+// Timsort
+// mergesort
+// quicksort
+// patiencesort
+// ...
 namespace sort {
 
 namespace detail {

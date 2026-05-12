@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.28)
 
 project(DSA LANGUAGES CXX)
 
@@ -13,7 +13,21 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(Microsoft.GSL CONFIG REQUIRED)
 find_package(Catch2 3 CONFIG REQUIRED)
 
-add_executable(DSA main.cpp ./data_structure/linked_list/exception.cpp)
+add_executable(DSA main.cpp)
+
+# module interfaces
+target_sources(
+  DSA
+  PRIVATE FILE_SET
+          cxx_modules
+          TYPE
+          CXX_MODULES
+          FILES
+          ./math.cppm
+          ./foo.cppm)
+# module implementations
+target_sources(DSA PRIVATE ./math.cpp ./foo.cpp)
+
 target_link_libraries(DSA PRIVATE Microsoft.GSL::GSL)
 
 # --- Tests ---

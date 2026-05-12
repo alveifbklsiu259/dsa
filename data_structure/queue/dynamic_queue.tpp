@@ -1,5 +1,6 @@
 #include "../array/dynamic_array.hpp"
 #include "./dynamic_queue.hpp"
+#include <stdexcept>
 
 #define DYNAMIC_QUEUE_TEMPLATE template <typename T>
 
@@ -43,18 +44,18 @@ DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::push(const T& val) { emplace(val); 
 DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::push(T&& val) { emplace(std::move(val)); }
 
 DYNAMIC_QUEUE_TEMPLATE void DynamicQueue<T>::pop() {
-  if (empty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::out_of_range("Queue is empty");
   m_length--;
   m_head = (m_head + 1) % m_data.capacity();
 }
 
 DYNAMIC_QUEUE_TEMPLATE const T& DynamicQueue<T>::front() const {
-  if (empty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::out_of_range("Queue is empty");
   return m_data[m_head];
 }
 
 DYNAMIC_QUEUE_TEMPLATE const T& DynamicQueue<T>::back() const {
-  if (empty()) throw std::underflow_error("Queue is empty");
+  if (empty()) throw std::out_of_range("Queue is empty");
   return m_data[(m_tail + m_data.capacity() - 1) % m_data.capacity()];
 }
 

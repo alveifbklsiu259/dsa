@@ -1,4 +1,5 @@
 #include "dynamic_stack.hpp"
+#include <stdexcept>
 
 #define DYNAMIC_STACK_TEMPLATE template <typename T>
 
@@ -13,12 +14,12 @@ DYNAMIC_STACK_TEMPLATE void DynamicStack<T>::push(const T& val) { m_data.pushBac
 DYNAMIC_STACK_TEMPLATE void DynamicStack<T>::push(T&& val) { m_data.pushBack(std::move(val)); }
 
 DYNAMIC_STACK_TEMPLATE void DynamicStack<T>::pop() {
-  if (empty()) throw std::underflow_error("Stack is empty");
+  if (empty()) throw std::out_of_range("Stack is empty");
   m_data.erase(m_data.cend() - 1);
 }
 
 DYNAMIC_STACK_TEMPLATE const T& DynamicStack<T>::top() const {
-  if (empty()) throw std::underflow_error("Stack is empty");
+  if (empty()) throw std::out_of_range("Stack is empty");
   return m_data[size() - 1];
 }
 

@@ -1,9 +1,9 @@
 #pragma once
-#include "./exception.hpp"
 #include "./iterator.hpp"
 #include "./linked_list_base.hpp"
 #include "./node.hpp"
 #include <gsl/gsl>
+#include <stdexcept>
 
 namespace linkedlist {
 template <typename T> class DoublyLinkedList : public LinkedListBase<DoublyLinkNode<T>> {
@@ -84,7 +84,7 @@ public:
   }
 
   void popBack() {
-    if (tail == nullptr) throw EmptyListException();
+    if (tail == nullptr) throw std::out_of_range("List is empty");
 
     DoublyLinkNode<T>* temp = tail;
     tail = tail->prev;
@@ -99,12 +99,12 @@ public:
   }
 
   T& back() {
-    if (tail == nullptr) throw EmptyListException();
+    if (tail == nullptr) throw std::out_of_range("List is empty");
     return tail->value;
   }
 
   const T& back() const {
-    if (tail == nullptr) throw EmptyListException();
+    if (tail == nullptr) throw std::out_of_range("List is empty");
     return tail->value;
   }
 
