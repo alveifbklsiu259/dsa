@@ -20,7 +20,7 @@ public:
   class Iterator {
 
   private:
-    using MapIterator = hashmap::HashMap<Key, DummyT, Hasher, KeyEqual>::Iterator;
+    using MapIterator = hashmap::HashMap<Key, DummyT, Hasher, KeyEqual>::iterator;
     MapIterator m_it;
 
   public:
@@ -60,10 +60,7 @@ public:
   template <std::input_iterator InputIt>
     requires std::constructible_from<Key, std::iter_value_t<InputIt>>
   HashSet(
-      InputIt first,
-      InputIt last,
-      size_t n = 2,
-      const Hasher& hasher = Hasher{},
+      InputIt first, InputIt last, size_t n = 2, const Hasher& hasher = Hasher{},
       const KeyEqual& eq = KeyEqual{}
   )
       : HashSet(n, hasher, eq) {

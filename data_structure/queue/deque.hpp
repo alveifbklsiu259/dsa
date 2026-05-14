@@ -8,7 +8,7 @@
 #include <stdexcept>
 
 #ifndef NDEBUG
-constexpr int debugValue = 9999;
+inline constexpr int debugValue = 9999;
 #endif
 
 /*

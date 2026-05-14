@@ -39,8 +39,8 @@ protected:
   }
 
 public:
-  using Iterator = ForwardIterator<NodeType>;
-  using ConstIterator = ForwardIterator<const NodeType>;
+  using iterator = ForwardIterator<NodeType>;
+  using const_iterator = ForwardIterator<const NodeType>;
 
   LinkedListBase() = default;
   LinkedListBase(std::initializer_list<ValueType> init) {
@@ -163,11 +163,11 @@ public:
     m_head = prev;
   }
 
-  Iterator begin() noexcept(noexcept(Iterator(m_head))) { return Iterator(m_head); }
-  ConstIterator begin() const noexcept(noexcept(Iterator(m_head))) { return ConstIterator(m_head); }
+  iterator begin() noexcept(noexcept(iterator(m_head))) { return iterator(m_head); }
+  const_iterator begin() const noexcept(noexcept(iterator(m_head))) { return const_iterator(m_head); }
 
-  Iterator end() noexcept(noexcept(Iterator(nullptr))) { return Iterator(nullptr); }
-  ConstIterator end() const noexcept(noexcept(Iterator(nullptr))) { return ConstIterator(nullptr); }
+  iterator end() noexcept(noexcept(iterator(nullptr))) { return iterator(nullptr); }
+  const_iterator end() const noexcept(noexcept(iterator(nullptr))) { return const_iterator(nullptr); }
 };
 
 } // namespace linkedlist

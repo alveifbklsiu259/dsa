@@ -1,42 +1,21 @@
-#include "./algorithm/sort/sort.hpp"
 #include "data_structure/array/dynamic_array.hpp"
 #include "data_structure/array/static_array.hpp"
 #include "data_structure/hash_map/hash_map.hpp"
-#include "data_structure/hash_set/hash_set.hpp"
 #include "data_structure/queue/deque.hpp"
-#include "data_structure/queue/dynamic_queue.hpp"
-#include "data_structure/queue/priority_queue.hpp"
-#include "data_structure/queue/static_queue.hpp"
-#include "data_structure/stack/dynamic_stack.hpp"
 #include "data_structure/tree/binary_search_tree.hpp"
 #include "data_structure/tree/binary_tree.hpp"
 #include "data_structure/tree/node.hpp"
 #include "data_structure/tree/tree-visualizer.hpp"
-#include "data_structure/tree/trie.hpp"
-#include <algorithm>
-#include <array>
+import trie;
 #include <cassert>
-#include <cmath>
 #include <cstddef>
-#include <deque>
-#include <forward_list>
 #include <functional>
 #include <iostream>
-#include <memory>
 #include <memory_resource>
-#include <random>
-#include <span>
 #include <string>
-#include <vector>
-import math;
-#include <list>
-#include <numeric>
-#include <queue>
-#include <ranges>
-#include <stack>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
+#include <vector>
 
 class Task {
 public:
@@ -77,26 +56,12 @@ struct TaskCompare {
   }
 };
 
-void foo(tree::Node<int>& node) { std::cout << node.value() << ' '; };
-void baz(tree::Node<int>& node, size_t level) { std::cout << node.value() << ' '; };
-void bar(tree::Node<Task>& node) { std::cout << node.value() << ' '; };
+// void foo(tree::Node<int>& node) { std::cout << node.value() << ' '; };
+// void baz(tree::Node<int>& node, size_t level) { std::cout << node.value() << ' '; };
+// void bar(tree::Node<Task>& node) { std::cout << node.value() << ' '; };
 
 static_assert([] {
   // hashmap::HashMap<int, int> map;
-
-  return true;
-}());
-
-// static_assert([] {
-//   array::DynamicArray<int> arr;
-//   // arr.pushBack(1);
-//
-//   return true;
-// }());
-
-static_assert([] {
-  std::vector<int> v{1, 2, 3};
-  v.push_back(222);
 
   return true;
 }());
@@ -140,12 +105,12 @@ void test_allocator_injection() {
   std::pmr::polymorphic_allocator<> alloc{&dt};
 
   tree::Trie<std::string> trie(alloc);
-  // trie.insert("a");
-  // trie.insert("apple");
-  // trie.insert("banana");
-  // trie.insert("application");
-  // trie.insert("lemon");
-  // trie.insert("durian");
+  trie.insert("a");
+  trie.insert("apple");
+  trie.insert("banana");
+  trie.insert("application");
+  trie.insert("lemon");
+  trie.insert("durian");
   std::cout << "default tracker count: " << track.count << '\n';
 
   std::cout << "Exact bytes used by Trie: " << dt.total_bytes << " bytes\n";
@@ -291,12 +256,12 @@ int main() {
   array::DynamicArray<std::optional<int>> v2{1, 2, 3, 4, 5, 6};
   tree::BinaryTree<int> bt{2, 2, 3, 4, 4, 1, 2, 6, 8, 1, 1, 3, 2, 7, 3};
   // tree::BinarySearchTree<int> t = bt.toBinarySearchTree();
-  tree::BinarySearchTree<int> t = bt.toBinarySearchTree();
+  // tree::BinarySearchTree<int> t = bt.toBinarySearchTree();
   // t.eraseAll(2);
   // t.eraseAll(3);
   // tree::BinaryTree<int> t{v.begin(), v.end()};
   // tree::BinarySearchTree<int> t;
-  const auto& null = std::nullopt;
+  // const auto& null = std::nullopt;
   // t.fromArrayRepresentation({1, null, 1, null, null, -4, null, null, null, null, null, 5, 6, null, null});
   // t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70, null, null, 25, null, 30, 30, 30});
   // t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70});
@@ -336,7 +301,7 @@ int main() {
   // bt1.merge(bt2);
   //
   // tree::TreeVisualizer tv;
-  // tv.visualize(bt1, true);
+  // tv.visualize(bt, true);
   // std::cout << std::boolalpha << t.validBST() << '\n';
 
   // std::cout << '\n';
@@ -352,5 +317,6 @@ int main() {
   // to other containers like hashmap?
   // add constexpr to containers
   // add ==, != operators to containers (element-wise)
+  // - re-implement linked list
   return 0;
 }

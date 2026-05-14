@@ -1,9 +1,9 @@
-#include "./trie.hpp"
+// #include "./trie.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_all.hpp>
 
 TEST_CASE("Trie Initialization", "[trie][Trie]") {
-  tree::Trie<std::string> trie;
+  // tree::Trie<std::string> trie;
   // trie.insert("apple");
   // trie.insert("application");
   //

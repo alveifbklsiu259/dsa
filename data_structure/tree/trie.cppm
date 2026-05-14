@@ -1,15 +1,16 @@
-#pragma once
+module;
+
 #include "../hash_map/hash_map.hpp"
 #include "../queue/deque.hpp"
 #include "./detail.hpp"
 #include <concepts>
 #include <cstddef>
 #include <iterator>
-#include <memory_resource>
 #include <ranges>
 #include <type_traits>
 #include <utility>
 
+export module trie;
 namespace tree::detail {
 template <typename T> using ValT = std::ranges::range_value_t<T>;
 
@@ -23,7 +24,7 @@ concept ReconstructibleSeq =
 namespace tree {
 
 // forward declaration
-template <typename Seq, typename Hasher, typename KeyEqual>
+export template <typename Seq, typename Hasher, typename KeyEqual>
   requires detail::ReconstructibleSeq<Seq, detail::ValT<Seq>> && detail::Hasher<detail::ValT<Seq>, Hasher> &&
            detail::KeyEqual<detail::ValT<Seq>, KeyEqual>
 class Trie;
@@ -36,9 +37,6 @@ template <typename T, typename U, typename V> struct IsTrieSpecialization<Trie<T
 template <typename T>
 concept IsTrie = IsTrieSpecialization<T>::value;
 
-// TODO:
-// update iterator name to iterator, not Iterator.
-// Consider making trie a module
 template <bool IsConst, IsTrie ParentTrie> class TrieIterator {
   // for conversion constructor
   template <bool, IsTrie> friend class TrieIterator;
@@ -254,7 +252,7 @@ public:
   friend void swap(TrieNode& a, TrieNode& b) noexcept { a.swap(b); }
 };
 
-template <
+export template <
     typename Seq, typename Hasher = std::hash<detail::ValT<Seq>>,
     typename KeyEqual = std::equal_to<detail::ValT<Seq>>>
   requires detail::ReconstructibleSeq<Seq, detail::ValT<Seq>> && detail::Hasher<detail::ValT<Seq>, Hasher> &&

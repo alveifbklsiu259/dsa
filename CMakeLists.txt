@@ -16,17 +16,10 @@ find_package(Catch2 3 CONFIG REQUIRED)
 add_executable(DSA main.cpp)
 
 # module interfaces
-target_sources(
-  DSA
-  PRIVATE FILE_SET
-          cxx_modules
-          TYPE
-          CXX_MODULES
-          FILES
-          ./math.cppm
-          ./foo.cppm)
+target_sources(DSA PRIVATE FILE_SET cxx_modules TYPE CXX_MODULES FILES
+                           ./data_structure/tree/trie.cppm)
 # module implementations
-target_sources(DSA PRIVATE ./math.cpp ./foo.cpp)
+target_sources(DSA PRIVATE)
 
 target_link_libraries(DSA PRIVATE Microsoft.GSL::GSL)
 

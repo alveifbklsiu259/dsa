@@ -51,7 +51,7 @@ private:
         std::conditional_t<IsConst, const HashMap<K, V, Hasher, KeyEqual>, HashMap<K, V, Hasher, KeyEqual>>;
 
     using BucketIterator =
-        std::conditional_t<IsConst, typename BucketList::ConstIterator, typename BucketList::Iterator>;
+        std::conditional_t<IsConst, typename BucketList::const_iterator, typename BucketList::iterator>;
 
     MapType* m_map = nullptr;
     size_t m_bucketIdx;
@@ -150,8 +150,8 @@ private:
   }
 
 public:
-  using Iterator = ForwardIterator<false>;
-  using ConstIterator = ForwardIterator<true>;
+  using iterator = ForwardIterator<false>;
+  using const_iterator = ForwardIterator<true>;
 
   HashMap() : m_table(array::DynamicArray<BucketList>{2}) {}
 
@@ -166,55 +166,55 @@ public:
   }
 
   V& at(const K& key) {
-    Iterator it = find(key);
+    iterator it = find(key);
     if (it == end()) throwKeyNotFound(key);
     return it->getValue();
   }
 
   const V& at(const K& key) const {
-    ConstIterator it = find(key);
+    const_iterator it = find(key);
     if (it == end()) throwKeyNotFound(key);
     return it->getValue();
   }
 
-  ConstIterator find(const K& key) const {
+  const_iterator find(const K& key) const {
     size_t idx = getIndex(key);
     const BucketList& list = m_table[idx];
     for (auto it = list.begin(); it != list.end(); it++) {
-      if (m_keyEqual(it->getKey(), key)) return ConstIterator(this, idx, it);
+      if (m_keyEqual(it->getKey(), key)) return const_iterator(this, idx, it);
     }
     return end();
   }
 
-  Iterator find(const K& key) {
+  iterator find(const K& key) {
     size_t idx = getIndex(key);
     BucketList& list = m_table[idx];
 
     for (auto it = list.begin(); it != list.end(); it++) {
-      if (m_keyEqual(it->getKey(), key)) return Iterator(this, idx, it);
+      if (m_keyEqual(it->getKey(), key)) return iterator(this, idx, it);
     }
 
     return end();
   }
 
-  std::pair<Iterator, bool> insert(const HashMapKeyVal<K, V>& kv) { return emplace(kv.first, kv.second); }
+  std::pair<iterator, bool> insert(const HashMapKeyVal<K, V>& kv) { return emplace(kv.first, kv.second); }
 
-  std::pair<Iterator, bool> insert(HashMapKeyVal<K, V>&& kv) { // NOLINT
+  std::pair<iterator, bool> insert(HashMapKeyVal<K, V>&& kv) { // NOLINT
     return emplace(std::move(kv.first), std::move(kv.second));
   }
 
-  std::pair<Iterator, bool> insert(const K& key, const V& value) { return emplace(key, value); }
-  std::pair<Iterator, bool> insert(K&& key, V&& value) { return emplace(std::move(key), std::move(value)); }
+  std::pair<iterator, bool> insert(const K& key, const V& value) { return emplace(key, value); }
+  std::pair<iterator, bool> insert(K&& key, V&& value) { return emplace(std::move(key), std::move(value)); }
 
-  template <typename... Args> std::pair<Iterator, bool> emplace(const K& key, Args&&... args) {
+  template <typename... Args> std::pair<iterator, bool> emplace(const K& key, Args&&... args) {
     size_t newCapacity = m_table.capacity() == 0 ? 2 : m_table.capacity() * 2;
     if (m_length >= m_table.capacity() * HashMap::maxLoadFactor) rehash(newCapacity);
-    Iterator it = find(key);
+    iterator it = find(key);
     if (it != end()) return {it, false};
     BucketList& list = getList(key);
     list.emplaceFront(key, std::forward<Args>(args)...);
     m_length++;
-    return {Iterator(this, getIndex(key), list.begin()), true};
+    return {iterator(this, getIndex(key), list.begin()), true};
   }
 
   [[nodiscard]] bool contains(const K& key) const noexcept { return find(key) != end(); }
@@ -234,7 +234,7 @@ public:
   }
 
   V& operator[](const K& key) {
-    Iterator it = find(key);
+    iterator it = find(key);
     if (it != end()) return it->getValue();
     BucketList& list = getList(key);
     list.pushFront(HashMapKeyVal<K, V>{key, V{}});
@@ -256,25 +256,25 @@ public:
   constexpr Hasher hashFunction() const noexcept { return m_hasher; }
   constexpr KeyEqual keyEq() const noexcept { return m_keyEqual; }
 
-  Iterator begin() noexcept {
+  iterator begin() noexcept {
     for (size_t i = 0; i < m_table.capacity(); i++) {
-      typename BucketList::Iterator it = m_table[i].begin();
-      if (it != m_table[i].end()) return Iterator(this, i, it);
+      typename BucketList::iterator it = m_table[i].begin();
+      if (it != m_table[i].end()) return iterator(this, i, it);
     }
     return end();
   }
 
-  ConstIterator begin() const noexcept {
+  const_iterator begin() const noexcept {
     for (size_t i = 0; i < m_table.capacity(); i++) {
-      typename BucketList::ConstIterator it = m_table[i].begin();
-      if (it != m_table[i].end()) return ConstIterator(this, i, it);
+      typename BucketList::const_iterator it = m_table[i].begin();
+      if (it != m_table[i].end()) return const_iterator(this, i, it);
     }
     return end();
   }
 
-  Iterator end() noexcept { return Iterator(this, m_table.capacity(), typename BucketList::Iterator()); }
-  ConstIterator end() const noexcept {
-    return ConstIterator(this, m_table.capacity(), typename BucketList::ConstIterator());
+  iterator end() noexcept { return iterator(this, m_table.capacity(), typename BucketList::iterator()); }
+  const_iterator end() const noexcept {
+    return const_iterator(this, m_table.capacity(), typename BucketList::const_iterator());
   }
 
   // for ADL

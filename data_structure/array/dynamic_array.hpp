@@ -168,10 +168,10 @@ public:
   using const_reference = const value_type&;
   using pointer = value_type*;
   using const_pointer = const value_type*;
-  using Iterator = DynamicArrayIterator<false>;
-  using ConstIterator = DynamicArrayIterator<true>;
-  using ReverseIterator = std::reverse_iterator<Iterator>;
-  using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
+  using iterator = DynamicArrayIterator<false>;
+  using const_iterator = DynamicArrayIterator<true>;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   constexpr DynamicArray() : m_capacity(2), m_data(allocate(2)) {};
 
@@ -242,9 +242,9 @@ public:
     m_length = 0;
   }
 
-  constexpr Iterator erase(ConstIterator pos) { return erase(pos, pos + 1); }
+  constexpr iterator erase(const_iterator pos) { return erase(pos, pos + 1); }
 
-  constexpr Iterator erase(ConstIterator first, ConstIterator last) {
+  constexpr iterator erase(const_iterator first, const_iterator last) {
     if (first < cbegin() || last > cend() || last < first)
       throw std::out_of_range("Erase positions out of range");
 
@@ -266,12 +266,12 @@ public:
     }
 
     m_length -= count;
-    return Iterator{m_data + start};
+    return iterator{m_data + start};
   }
 
   void popBack() { erase(cend() - 1); }
 
-  template <typename... Args> constexpr Iterator emplace(ConstIterator pos, Args&&... args) {
+  template <typename... Args> constexpr iterator emplace(const_iterator pos, Args&&... args) {
     if (pos < cbegin() || pos > cend()) throw std::out_of_range("Emplace Position out of range");
 
     // this has to happen before calling reserve because reserve may render pos dangling.
@@ -293,7 +293,7 @@ public:
 
     new (m_data + idx) T(std::forward<Args>(args)...);
     m_length++;
-    return Iterator{m_data + idx};
+    return iterator{m_data + idx};
   }
 
   template <typename... Args> constexpr T& emplaceBack(Args&&... args) {
@@ -380,21 +380,21 @@ public:
   constexpr pointer data() noexcept { return m_data; }
   constexpr const_pointer data() const noexcept { return m_data; }
 
-  constexpr Iterator begin() noexcept { return Iterator{m_data}; }
-  constexpr ConstIterator begin() const noexcept { return ConstIterator{m_data}; }
-  constexpr ConstIterator cbegin() const noexcept { return ConstIterator{m_data}; }
+  constexpr iterator begin() noexcept { return iterator{m_data}; }
+  constexpr const_iterator begin() const noexcept { return const_iterator{m_data}; }
+  constexpr const_iterator cbegin() const noexcept { return const_iterator{m_data}; }
 
-  constexpr Iterator end() noexcept { return Iterator{m_data + m_length}; }
-  constexpr ConstIterator end() const noexcept { return ConstIterator{m_data + m_length}; }
-  constexpr ConstIterator cend() const noexcept { return ConstIterator{m_data + m_length}; }
+  constexpr iterator end() noexcept { return iterator{m_data + m_length}; }
+  constexpr const_iterator end() const noexcept { return const_iterator{m_data + m_length}; }
+  constexpr const_iterator cend() const noexcept { return const_iterator{m_data + m_length}; }
 
-  constexpr ReverseIterator rbegin() noexcept { return ReverseIterator{end()}; }
-  constexpr ConstReverseIterator rbegin() const noexcept { return ConstReverseIterator{end()}; }
-  constexpr ConstReverseIterator crbegin() const noexcept { return ConstReverseIterator{end()}; }
+  constexpr reverse_iterator rbegin() noexcept { return reverse_iterator{end()}; }
+  constexpr const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator{end()}; }
+  constexpr const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator{end()}; }
 
-  constexpr ReverseIterator rend() noexcept { return ReverseIterator{begin()}; }
-  constexpr ConstReverseIterator rend() const noexcept { return ConstReverseIterator{begin()}; }
-  constexpr ConstReverseIterator crend() const noexcept { return ConstReverseIterator{begin()}; }
+  constexpr reverse_iterator rend() noexcept { return reverse_iterator{begin()}; }
+  constexpr const_reverse_iterator rend() const noexcept { return const_reverse_iterator{begin()}; }
+  constexpr const_reverse_iterator crend() const noexcept { return const_reverse_iterator{begin()}; }
 };
 
 template <typename T> void swap(DynamicArray<T>& a, DynamicArray<T>& b) noexcept { a.swap(b); } // for ADL
