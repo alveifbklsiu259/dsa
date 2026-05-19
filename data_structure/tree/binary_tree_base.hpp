@@ -51,9 +51,6 @@ when you’ve built a spanning tree.
 
 what are spanning trees?
 
-trie problems:
-- https://leetcode.com/problems/word-search-ii/description/ */
-
 /*
  * Trees to implement
  * - AVL tree

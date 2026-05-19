@@ -70,7 +70,6 @@ private:
   array::DynamicArray<Element> m_path;
 
 public:
-  // TrieIterator(allocator_type alloc = {}) {};
   TrieIterator(allocator_type alloc)
   // TODO: make then pmr-aware
   // : m_stack(alloc), m_path(alloc)
@@ -153,7 +152,7 @@ public:
         m_endOfWord(other.m_endOfWord) {
     try {
       for (auto const& [key, childNodePtr] : other.m_children) {
-        TrieNode* newNode = m_alloc.new_object<TrieNode>(*childNodePtr, m_alloc);
+        TrieNode* newNode = m_alloc.new_object<TrieNode>(*childNodePtr);
         m_children.emplace(key, newNode);
       }
     } catch (...) {
@@ -182,7 +181,7 @@ public:
 
     try {
       for (auto const& [key, childNodePtr] : other.m_children) {
-        TrieNode* newNode = m_alloc.new_object<TrieNode>(std::move(*childNodePtr), m_alloc);
+        TrieNode* newNode = m_alloc.new_object<TrieNode>(std::move(*childNodePtr));
         m_children.emplace(key, newNode);
       }
     } catch (...) {
@@ -311,27 +310,28 @@ public:
   Trie(allocator_type alloc) : Trie({}, {}, alloc) {}
 
   Trie(const Trie& other, allocator_type alloc)
-      : m_alloc(alloc), m_hasher(other.m_hasher), m_keyEqual(other.m_keyEqual), m_root(nullptr) {
+      : m_alloc(alloc), m_hasher(other.m_hasher), m_keyEqual(other.m_keyEqual), m_root(nullptr),
+        m_size(other.m_size) {
     if (other.m_root == nullptr) return;
-    m_root = m_alloc.new_object<NodeType>(*other.m_root, m_alloc);
+    m_root = m_alloc.new_object<NodeType>(*other.m_root);
   }
 
   Trie(const Trie& other) : Trie(other, other.m_alloc) {}
 
   Trie(Trie&& other, allocator_type alloc)
       : m_alloc(alloc), m_hasher(std::move(other.m_hasher)), m_keyEqual(std::move(other.m_keyEqual)),
-        m_root(nullptr) {
+        m_root(nullptr), m_size(std::exchange(other.m_size, 0)) {
     if (m_alloc == other.m_alloc) {
       m_root = std::exchange(other.m_root, nullptr);
     } else {
       if (other.m_root == nullptr) return;
-      m_root = m_alloc.new_object<NodeType>(std::move(*other.m_root), m_alloc);
+      m_root = m_alloc.new_object<NodeType>(std::move(*other.m_root));
     }
   }
 
   Trie(Trie&& other) noexcept
       : m_alloc(other.m_alloc), m_hasher(std::move(other.m_hasher)), m_keyEqual(std::move(other.m_keyEqual)),
-        m_root(std::exchange(other.m_root, nullptr)) {}
+        m_root(std::exchange(other.m_root, nullptr)), m_size(std::exchange(other.m_size, 0)) {}
 
   Trie& operator=(const Trie& other) {
     if (this == &other) return *this;
@@ -411,6 +411,8 @@ public:
     return sequences;
   }
 
+  [[nodiscard]] allocator_type getAllocator() const noexcept { return m_alloc; }
+
   iterator begin() { return {m_root, m_alloc}; }
   iterator end() noexcept { return {m_alloc}; }
 
@@ -426,6 +428,7 @@ public:
     swap(m_root, other.m_root);
     swap(m_hasher, other.m_hasher);
     swap(m_keyEqual, other.m_keyEqual);
+    swap(m_size, other.m_size);
   }
 
   // for ADL

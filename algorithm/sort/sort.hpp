@@ -27,7 +27,7 @@ enum class Order : uint8_t { Ascending, Descending };
 
 template <std::random_access_iterator RandomIt, typename Compare = std::less<>>
   requires detail::Comparator<RandomIt, Compare>
-void bubbleSort(RandomIt first, RandomIt last, Compare compare = Compare{}) {
+void bubbleSort(RandomIt first, RandomIt last, Compare compare = {}) {
   auto n = std::distance(first, last);
   for (decltype(n) i = 0; i < n - 1; i++) {
     bool swapped = false;
@@ -43,7 +43,7 @@ void bubbleSort(RandomIt first, RandomIt last, Compare compare = Compare{}) {
 
 template <std::random_access_iterator RandomIt, typename Compare = std::less<>>
   requires detail::Comparator<RandomIt, Compare>
-void selectionSort(RandomIt first, RandomIt last, Compare compare = Compare{}) {
+void selectionSort(RandomIt first, RandomIt last, Compare compare = {}) {
   auto n = std::distance(first, last);
   for (decltype(n) i = 0; i < n - 1; i++) {
     RandomIt bestIt = first + i;
@@ -56,7 +56,7 @@ void selectionSort(RandomIt first, RandomIt last, Compare compare = Compare{}) {
 
 template <std::random_access_iterator RandomIt, typename Compare = std::less<>>
   requires detail::Comparator<RandomIt, Compare>
-void insertionSort(RandomIt first, RandomIt last, Compare compare = Compare{}) {
+void insertionSort(RandomIt first, RandomIt last, Compare compare = {}) {
   for (RandomIt i = first + 1; i < last; i++) {
     auto current = *i;
     RandomIt j = i;
@@ -68,9 +68,68 @@ void insertionSort(RandomIt first, RandomIt last, Compare compare = Compare{}) {
   }
 }
 
+namespace detail {
+template <
+    std::random_access_iterator RandomIt, std::forward_iterator BufferIt, typename Compare = std::less<>>
+  requires detail::Comparator<RandomIt, Compare>
+void mergeSortImpl(RandomIt first, RandomIt last, BufferIt bufferStart, Compare compare = {}) {
+  auto n = std::distance(first, last);
+  if (n <= 1) return;
+  RandomIt mid = first + (n / 2);
+
+  // divide
+  mergeSortImpl(first, mid, bufferStart, compare);
+  mergeSortImpl(mid, last, bufferStart, compare);
+
+  // merge
+  RandomIt left = first;
+  RandomIt right = mid;
+  BufferIt des = bufferStart;
+
+  // while both partitions have element
+  while (left < mid && right < last) {
+    if (compare(*left, *right)) {
+      *des = std::move(*left);
+      ++left;
+      ++des;
+    } else {
+      *des = std::move(*right);
+      ++right;
+      ++des;
+    }
+  }
+
+  while (left < mid) {
+    *des = std::move(*left);
+    ++left;
+    ++des;
+  }
+
+  while (right < last) {
+    *des = std::move(*right);
+    ++right;
+    ++des;
+  }
+
+  std::move(bufferStart, des, first);
+}
+} // namespace detail
+
 template <std::random_access_iterator RandomIt, typename Compare = std::less<>>
   requires detail::Comparator<RandomIt, Compare>
-void heapSort(RandomIt first, RandomIt last, Compare compare = Compare{}) {
+void mergeSort(RandomIt first, RandomIt last, Compare compare = {}) {
+  auto n = std::distance(first, last);
+  if (n <= 1) return;
+
+  using ValueType = std::iter_value_t<RandomIt>;
+  // need to default construct n ValueType
+  array::DynamicArray<ValueType> buffer(n);
+  detail::mergeSortImpl(first, last, buffer.begin(), compare);
+}
+
+template <std::random_access_iterator RandomIt, typename Compare = std::less<>>
+  requires detail::Comparator<RandomIt, Compare>
+void heapSort(RandomIt first, RandomIt last, Compare compare = {}) {
   // in-place heap sort uses O(1) auxiliary space, using priority queue would take O(n)
   auto n = std::distance(first, last);
   if (n <= 0) return;
