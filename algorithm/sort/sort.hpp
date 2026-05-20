@@ -1,12 +1,13 @@
 #pragma once
 #include "../../data_structure/array/dynamic_array.hpp"
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <random>
 
 // TODO:
 // Timsort
-// mergesort
 // quicksort
 // patiencesort
 // ...
@@ -154,6 +155,52 @@ void heapSort(RandomIt first, RandomIt last, Compare compare = {}) {
     std::iter_swap(first, first + i);
     bubbleDown(0, i);
   }
+}
+
+namespace detail {
+
+template <std::random_access_iterator RandomIt, typename Compare, typename URNG>
+  requires detail::Comparator<RandomIt, Compare>
+size_t partition(RandomIt first, RandomIt last, Compare compare, URNG& gen) {
+  size_t n = std::distance(first, last);
+  std::uniform_int_distribution<size_t> dist(0, n - 1);
+  size_t piviotIdx = dist(gen);
+
+  RandomIt lastElement = last - 1;
+  std::iter_swap(first + piviotIdx, lastElement);
+
+  RandomIt piviotIt = lastElement;
+  std::ptrdiff_t offset = -1;
+
+  for (RandomIt i = first; i < lastElement; ++i) {
+    if (compare(*i, *piviotIt)) {
+      ++offset;
+      std::iter_swap((first + offset), i);
+    }
+  }
+  std::iter_swap((first + offset + 1), lastElement);
+  return static_cast<size_t>(offset + 1);
+}
+
+template <std::random_access_iterator RandomIt, typename Compare, typename URNG>
+  requires detail::Comparator<RandomIt, Compare>
+void quickSortImpl(RandomIt first, RandomIt last, Compare compare, URNG& gen) {
+  size_t n = std::distance(first, last);
+  if (n <= 1) return;
+  size_t piviotIdx = partition(first, last, compare, gen);
+
+  quickSortImpl(first, first + piviotIdx, compare, gen);
+  quickSortImpl(first + piviotIdx + 1, last, compare, gen);
+}
+
+} // namespace detail
+
+template <std::random_access_iterator RandomIt, typename Compare = std::less<>>
+  requires detail::Comparator<RandomIt, Compare>
+void quickSort(RandomIt first, RandomIt last, Compare compare = {}) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  detail::quickSortImpl(first, last, compare, gen);
 }
 
 template <detail::IntegralIterator RandomIt>

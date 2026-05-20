@@ -7,6 +7,7 @@
 #include "data_structure/tree/binary_tree.hpp"
 #include "data_structure/tree/node.hpp"
 #include "data_structure/tree/tree-visualizer.hpp"
+#include <cmath>
 #include <queue>
 import trie;
 #include <cassert>
@@ -68,18 +69,18 @@ static_assert([] {
   return true;
 }());
 
-class TrieNode {
-public:
-  TrieNode* children[26];
-  bool endOfWord;
-};
-
 int main() {
+  std::vector<int> arr{5, 2, 8, 1, 2, 4, 1, 7, 2, 8, 3, 578};
+  sort::quickSort(arr.begin(), arr.end());
+
+  for (int i : arr) { std::cout << i << ' '; }
+  std::cout << '\n';
+  // std::cout << i;
+
   array::DynamicArray<int> preorder{9, 9, 20, 15, 7};  // root -> left -> right
   array::DynamicArray<int> inorder{9, 9, 15, 20, 7};   // left -> root -> right
   array::DynamicArray<int> postorder{9, 15, 7, 20, 9}; // left -> right -> root
   array::DynamicArray<int> levelorder{9, 9, 20, 15, 7};
-
   // array::StaticArray<int, 2> sa{1, 2};
   // array::StaticArray ssa = {1,2,3};
   // array::StaticArray ssa2{1,2,3};
