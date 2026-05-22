@@ -4,11 +4,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <optional>
 #include <random>
 
 // TODO:
 // Timsort
-// quicksort
 // patiencesort
 // ...
 namespace sort {
@@ -182,6 +182,30 @@ size_t partition(RandomIt first, RandomIt last, Compare compare, URNG& gen) {
   return static_cast<size_t>(offset + 1);
 }
 
+// a variant of the partition method used in quick sort/select
+template <std::random_access_iterator RandomIt, typename Compare, typename URNG>
+  requires detail::Comparator<RandomIt, Compare>
+RandomIt partitionIter(RandomIt first, RandomIt last, Compare compare, URNG& gen) {
+  size_t n = std::distance(first, last);
+  std::uniform_int_distribution<size_t> dist(0, n - 1);
+  size_t piviotIdx = dist(gen);
+
+  RandomIt lastElement = last - 1;
+  std::iter_swap(first + piviotIdx, lastElement);
+
+  RandomIt piviotIt = lastElement;
+  RandomIt i = first;
+
+  for (RandomIt j = first; j < lastElement; ++j) {
+    if (compare(*j, *piviotIt)) {
+      std::iter_swap(i, j);
+      ++i;
+    }
+  }
+  std::iter_swap(i, lastElement);
+  return i;
+}
+
 template <std::random_access_iterator RandomIt, typename Compare, typename URNG>
   requires detail::Comparator<RandomIt, Compare>
 void quickSortImpl(RandomIt first, RandomIt last, Compare compare, URNG& gen) {
@@ -195,12 +219,16 @@ void quickSortImpl(RandomIt first, RandomIt last, Compare compare, URNG& gen) {
 
 } // namespace detail
 
-template <std::random_access_iterator RandomIt, typename Compare = std::less<>>
+template <std::random_access_iterator RandomIt, typename Compare = std::less<>, typename URNG = std::mt19937>
   requires detail::Comparator<RandomIt, Compare>
-void quickSort(RandomIt first, RandomIt last, Compare compare = {}) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  detail::quickSortImpl(first, last, compare, gen);
+void quickSort(RandomIt first, RandomIt last, Compare compare = {}, URNG* gen = nullptr) {
+  std::optional<URNG> localGen;
+  if (gen == nullptr) {
+    std::random_device rd;
+    localGen.emplace(rd());
+    gen = &*localGen;
+  }
+  detail::quickSortImpl(first, last, compare, *gen);
 }
 
 template <detail::IntegralIterator RandomIt>

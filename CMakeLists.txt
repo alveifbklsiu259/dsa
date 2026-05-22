@@ -19,8 +19,15 @@ add_library(dsa_modules OBJECT)
 target_sources(dsa_modules PRIVATE # implementations
 )
 
-target_sources(dsa_modules PUBLIC FILE_SET cxx_modules TYPE CXX_MODULES FILES
-                                  ./data_structure/tree/trie.cppm)
+target_sources(
+  dsa_modules
+  PUBLIC FILE_SET
+         cxx_modules
+         TYPE
+         CXX_MODULES
+         FILES
+         ./data_structure/tree/trie.cppm
+         ./algorithm/quick_select.cppm)
 
 target_link_libraries(dsa_modules PRIVATE Microsoft.GSL::GSL)
 # --- modules ---

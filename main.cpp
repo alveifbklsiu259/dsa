@@ -1,4 +1,3 @@
-#include "algorithm/sort/sort.hpp"
 #include "data_structure/array/dynamic_array.hpp"
 #include "data_structure/array/static_array.hpp"
 #include "data_structure/hash_map/hash_map.hpp"
@@ -7,14 +6,11 @@
 #include "data_structure/tree/binary_tree.hpp"
 #include "data_structure/tree/node.hpp"
 #include "data_structure/tree/tree-visualizer.hpp"
-#include <cmath>
-#include <queue>
 import trie;
 #include <cassert>
 #include <cstddef>
 #include <functional>
 #include <iostream>
-#include <memory_resource>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -58,25 +54,13 @@ struct TaskCompare {
     // returns true if lhs < rhs → max heap
   }
 };
-
 // void foo(tree::Node<int>& node) { std::cout << node.value() << ' '; };
 // void baz(tree::Node<int>& node, size_t level) { std::cout << node.value() << ' '; };
 // void bar(tree::Node<Task>& node) { std::cout << node.value() << ' '; };
 
-static_assert([] {
-  // hashmap::HashMap<int, int> map;
-
-  return true;
-}());
+static_assert([] { return true; }());
 
 int main() {
-  std::vector<int> arr{5, 2, 8, 1, 2, 4, 1, 7, 2, 8, 3, 578};
-  sort::quickSort(arr.begin(), arr.end());
-
-  for (int i : arr) { std::cout << i << ' '; }
-  std::cout << '\n';
-  // std::cout << i;
-
   array::DynamicArray<int> preorder{9, 9, 20, 15, 7};  // root -> left -> right
   array::DynamicArray<int> inorder{9, 9, 15, 20, 7};   // left -> root -> right
   array::DynamicArray<int> postorder{9, 15, 7, 20, 9}; // left -> right -> root
