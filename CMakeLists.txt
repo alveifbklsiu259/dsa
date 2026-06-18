@@ -27,6 +27,7 @@ target_sources(
          CXX_MODULES
          FILES
          ./data_structure/tree/trie.cppm
+         ./data_structure/graph/graph.cppm
          ./algorithm/quick_select.cppm)
 
 target_link_libraries(dsa_modules PRIVATE Microsoft.GSL::GSL)

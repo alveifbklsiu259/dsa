@@ -1,10 +1,37 @@
 #pragma once
 #include <algorithm>
 #include <cassert>
+#include <concepts>
+#include <iostream>
 #include <memory>
 #include <new>
+#include <ostream>
 #include <stdexcept>
 #include <type_traits>
+
+namespace {
+template <typename T>
+concept Streamable = requires(std::ostream& os, const T& val) {
+  { os << val } -> std::convertible_to<std::ostream&>;
+};
+
+template <typename T>
+concept DereferenceStreamable = requires(const T& val) {
+  { *val };
+} && Streamable<std::remove_cvref_t<decltype(*std::declval<const T&>())>>;
+
+template <typename T>
+concept ValStreamable = requires(const T& val) {
+  { val.val() };
+} && Streamable<std::remove_cvref_t<decltype(std::declval<const T&>().val())>>;
+
+template <typename T>
+concept ValueStreamable = requires(const T& val) {
+  { val.value() };
+} && Streamable<std::remove_cvref_t<decltype(std::declval<const T&>().value())>>;
+
+} // namespace
+
 namespace array {
 
 template <typename T> class DynamicArray {
@@ -371,6 +398,54 @@ public:
     swap(m_data, other.m_data);
     swap(m_length, other.m_length);
     swap(m_capacity, other.m_capacity);
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const DynamicArray& arr) {
+    /**
+     * @brief Recursively unwraps and prints a generic element to an output stream.
+     *
+     * 1. Why `auto` instead of `std::function`:
+     *    - `std::function` cannot have templated (`auto`) parameters, which this function requires.
+     *
+     * 2. Why `std::remove_cvref_t`:
+     *    - The parameter `const auto& e` forces `decltype(e)` to resolve to a reference type
+     *      (e.g., `const Node* const&`).
+     *    - Type traits like `std::is_pointer_v` look only at the outermost wrapper and will
+     *      evaluate to false on a reference-to-pointer.
+     *    - Stripping `const`, `volatile`, and `&` exposes the raw underlying type for accurate
+     *      `if constexpr` compile-time branching.
+     */
+    auto printElement = [&](auto&& self, const auto& e) -> void {
+      using Element = std::remove_cvref_t<decltype(e)>;
+
+      if constexpr (std::is_pointer_v<Element>) {
+        if (e == nullptr) {
+          os << "nullptr";
+          return;
+        }
+        self(self, *e);
+        return;
+      } else if constexpr (ValStreamable<Element>) {
+        os << e.val();
+      } else if constexpr (ValueStreamable<Element>) {
+        os << e.value();
+      } else if constexpr (DereferenceStreamable<Element>) {
+        os << *e;
+      } else if constexpr (Streamable<Element>) {
+        os << e;
+      } else {
+        os << "Unstreamable Type";
+      }
+    };
+
+    os << "[";
+    size_t n = arr.size();
+    for (size_t i = 0; i < n; ++i) {
+      printElement(printElement, arr[i]);
+      if (i < n - 1) os << ", ";
+    };
+    os << "]";
+    return os;
   }
 
   [[nodiscard]] constexpr size_t size() const noexcept { return m_length; };

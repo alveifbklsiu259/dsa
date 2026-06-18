@@ -1,6 +1,5 @@
 #include "./static_array.hpp"
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers_all.hpp>
 
 TEST_CASE("StaticArray Initialization and Size", "[array][StaticArray]") {
   SECTION("Default construction zero-initializes") {

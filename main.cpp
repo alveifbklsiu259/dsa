@@ -1,12 +1,14 @@
 #include "data_structure/array/dynamic_array.hpp"
 #include "data_structure/array/static_array.hpp"
 #include "data_structure/hash_map/hash_map.hpp"
+#include "data_structure/hash_set/hash_set.hpp"
 #include "data_structure/queue/deque.hpp"
 #include "data_structure/tree/binary_search_tree.hpp"
 #include "data_structure/tree/binary_tree.hpp"
 #include "data_structure/tree/node.hpp"
 #include "data_structure/tree/tree-visualizer.hpp"
 import trie;
+import graph;
 #include <cassert>
 #include <cstddef>
 #include <functional>
@@ -56,11 +58,96 @@ struct TaskCompare {
 };
 // void foo(tree::Node<int>& node) { std::cout << node.value() << ' '; };
 // void baz(tree::Node<int>& node, size_t level) { std::cout << node.value() << ' '; };
-// void bar(tree::Node<Task>& node) { std::cout << node.value() << ' '; };
-
+// void bar(tree::Node<Task>& node) { std*::cout << node.value() << ' '; };
 static_assert([] { return true; }());
-
 int main() {
+
+  // graph::UndirectedGraph<std::string> myGraph;
+  //
+  // graph::Node<std::string>* taipei = myGraph.addVertex("Taipei");
+  // auto* tokyo = myGraph.addVertex("Tokyo");
+  // auto* seoul = myGraph.addVertex("Seoul");
+  //
+  // // Connect them
+  // myGraph.addEdge(taipei, tokyo);
+  // myGraph.addEdge(tokyo, seoul);
+  // // myGraph.removeEdge(taipei, tokyo);
+  // // myGraph.removeEdge(taipei, seoul);
+  // // myGraph.removeVertex(tokyo);
+  // // See the result
+  // graph::UndirectedGraph<std::string> g2 = myGraph;
+  // g2 = myGraph;
+  // g2.printGraph();
+  // std::cout << g2.edgeCount() << '\n';
+  //
+  // graph::DirectedGraph<std::string> dg;
+  // auto* newYork = dg.addVertex("NewYork");
+  // auto* hawaii = dg.addVertex("Hawaii");
+  // dg.addEdge(newYork, hawaii);
+  // dg.printGraph();
+  // std::cout << dg.edgeCount() << '\n';
+  //
+  // std::cout << "degree: " << myGraph.degree(taipei) << '\n';
+  //------------------------------------------
+
+  // 1. Create a Directed Graph for strings
+  // graph::DirectedGraph<std::string> clothingGraph;
+  //
+  // // 2. Add all the vertex tasks to the graph
+  // auto* underwear = clothingGraph.addVertex("Underwear");
+  // auto* pants = clothingGraph.addVertex("Pants");
+  // auto* socks = clothingGraph.addVertex("Socks");
+  // auto* shoes = clothingGraph.addVertex("Shoes");
+  // auto* shirt = clothingGraph.addVertex("Shirt");
+  // auto* tie = clothingGraph.addVertex("Tie");
+  // auto* jacket = clothingGraph.addVertex("Jacket");
+  //
+  // // 3. Establish dependency rules (Edges)
+  // // Underwear -> Pants -> Shoes
+  // clothingGraph.addEdge(underwear, pants);
+  // clothingGraph.addEdge(pants, shoes);
+  //
+  // // Socks -> Shoes
+  // clothingGraph.addEdge(socks, shoes);
+  //
+  // // Shirt -> Tie -> Jacket
+  // clothingGraph.addEdge(shirt, tie);
+  // clothingGraph.addEdge(tie, jacket);
+  graph::DirectedGraph<std::string> clothingGraph{
+      {"Underwear", "Pants"}, {"Pants", "Shoes"}, {"Socks", "Shoes"}, {"Shirt", "Tie"}, {"Tie", "Jacket"}
+  };
+
+  // 2. Define the dependency rules (Edges) as a collection of pairs
+  // std::vector<std::pair<std::string, std::string>> clothingEdges = {
+  //     {"Underwear", "Pants"}, {"Pants", "Shoes"}, {"Socks", "Shoes"}, {"Shirt", "Tie"}, {"Tie",
+  //     "Jacket"}
+  // };
+
+  // 3. Construct the entire topology in a single, clean call
+  // clothingGraph.fromEdges(clothingEdges);
+
+  auto allOrders = graph::utils::allTopologicalOrders(clothingGraph);
+  auto order = graph::utils::topologicalSort(clothingGraph);
+  std::cout << order.second << '\n';
+  // for (auto& order : allOrders) {
+  //   for (const auto* e : order) { std::cout << e->val() << ' '; }
+  //   std::cout << '\n';
+  // }
+  clothingGraph.printGraph();
+  // std::cout << std::boolalpha << clothingGraph.hasCycle() << '\n';
+  // for (auto& order : allOrders) std::cout << order << '\n';
+  //------------------------------------------
+  // hashset::HashSet<int> hs;
+  // hs.reserve(12);
+  // hs.emplace(1);
+  // hs.emplace(2);
+  // hs.emplace(300);
+  // hs.emplace(4);
+  // hs.emplace(5);
+  // hs.insert(6);
+  // for (auto i : hs) { std::cout << i << '\n'; }
+
+  std::unordered_map<int, int> mm;
   array::DynamicArray<int> preorder{9, 9, 20, 15, 7};  // root -> left -> right
   array::DynamicArray<int> inorder{9, 9, 15, 20, 7};   // left -> root -> right
   array::DynamicArray<int> postorder{9, 15, 7, 20, 9}; // left -> right -> root
@@ -94,8 +181,8 @@ int main() {
   // tree::BinaryTree<int> t{v.begin(), v.end()};
   // tree::BinarySearchTree<int> t;
   // const auto& null = std::nullopt;
-  // t.fromArrayRepresentation({1, null, 1, null, null, -4, null, null, null, null, null, 5, 6, null, null});
-  // t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70, null, null, 25, null, 30, 30, 30});
+  // t.fromArrayRepresentation({1, null, 1, null, null, -4, null, null, null, null, null, 5, 6, null,
+  // null}); t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70, null, null, 25, null, 30, 30, 30});
   // t.fromArrayRepresentation({40, 20, 60, 10, 30, 50, 70});
   // t.insert(1);
   // t.fromValues({1, 3, 4, 5, 6, 7, 8});

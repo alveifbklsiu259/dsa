@@ -1,6 +1,7 @@
 #pragma once
 #include "../array/dynamic_array.hpp"
 #include "../linked_list/singly_linked_list.hpp"
+#include <cmath>
 #include <concepts>
 #include <functional>
 #include <sstream>
@@ -37,7 +38,8 @@ template <typename K, typename V, typename Hasher = std::hash<K>, typename KeyEq
 class HashMap {
 
 private:
-  constexpr static const double maxLoadFactor = 0.75;
+  // NOLINTNEXTLINE(readability-identifier-naming)
+  constexpr static const float maxLoadFactor_ = 0.75F;
   using BucketList = linkedlist::SinglyLinkedList<HashMapKeyVal<K, V>>;
   [[no_unique_address]] Hasher m_hasher;
   [[no_unique_address]] KeyEqual m_keyEqual;
@@ -149,6 +151,16 @@ private:
     }
   }
 
+  // it has to be a power of two because we use & instead of modulo operator in getIndex
+  [[nodiscard]] size_t calculateMinRequiredCapacity(size_t n) const noexcept {
+    if (n <= 1) return 2;
+    size_t threshold = static_cast<size_t>(std::ceil(static_cast<float>(n) / maxLoadFactor_));
+
+    size_t powOfTwoCapacity = 2;
+    while (powOfTwoCapacity < threshold) powOfTwoCapacity *= 2;
+    return powOfTwoCapacity;
+  }
+
 public:
   using iterator = ForwardIterator<false>;
   using const_iterator = ForwardIterator<true>;
@@ -207,10 +219,12 @@ public:
   std::pair<iterator, bool> insert(K&& key, V&& value) { return emplace(std::move(key), std::move(value)); }
 
   template <typename... Args> std::pair<iterator, bool> emplace(const K& key, Args&&... args) {
-    size_t newCapacity = m_table.capacity() == 0 ? 2 : m_table.capacity() * 2;
-    if (m_length >= m_table.capacity() * HashMap::maxLoadFactor) rehash(newCapacity);
     iterator it = find(key);
     if (it != end()) return {it, false};
+
+    size_t newCapacity = calculateMinRequiredCapacity(m_length + 1);
+    if (newCapacity > m_table.capacity()) rehash(newCapacity);
+
     BucketList& list = getList(key);
     list.emplaceFront(key, std::forward<Args>(args)...);
     m_length++;
@@ -251,10 +265,19 @@ public:
     return true;
   }
 
-  bool operator!=(const HashMap& other) { return !(*this == other); }
+  constexpr bool operator!=(const HashMap& other) const noexcept { return !(*this == other); }
+
+  constexpr void reserve(size_t n) {
+    size_t requiredCapacity = calculateMinRequiredCapacity(n);
+    if (requiredCapacity <= m_table.capacity()) return;
+    rehash(requiredCapacity);
+  }
 
   constexpr Hasher hashFunction() const noexcept { return m_hasher; }
   constexpr KeyEqual keyEq() const noexcept { return m_keyEqual; }
+
+  [[nodiscard]] constexpr float loadFactor() const noexcept { return m_length / m_table.capacity(); }
+  [[nodiscard]] constexpr float maxLoadFactor() const noexcept { return maxLoadFactor_; }
 
   iterator begin() noexcept {
     for (size_t i = 0; i < m_table.capacity(); i++) {
@@ -272,10 +295,13 @@ public:
     return end();
   }
 
+  const_iterator cbegin() const noexcept { return begin(); }
+
   iterator end() noexcept { return iterator(this, m_table.capacity(), typename BucketList::iterator()); }
   const_iterator end() const noexcept {
     return const_iterator(this, m_table.capacity(), typename BucketList::const_iterator());
   }
+  const_iterator cend() const noexcept { return end(); }
 
   // for ADL
   constexpr friend void swap(HashMap& a, HashMap& b) noexcept { a.swap(b); }

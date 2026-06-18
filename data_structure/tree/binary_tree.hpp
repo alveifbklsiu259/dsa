@@ -333,21 +333,21 @@ public:
   using detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase;
 
   BinaryTree(std::initializer_list<std::optional<T>> list, Hasher hasher = {}, KeyEqual eq = {})
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(std::move(hasher), std::move(eq)) {
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(std::move(hasher), std::move(eq)) {
     fromArrayRepresentation(list);
   }
 
   template <typename Seq>
     requires detail::RandomAccessOptionalSequence<T, Seq>
   BinaryTree(Seq seq, Hasher hasher = {}, KeyEqual eq = {})
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(std::move(hasher), std::move(eq)) {
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(std::move(hasher), std::move(eq)) {
     fromArrayRepresentation(seq);
   }
 
   template <std::input_iterator InputIt>
     requires std::constructible_from<std::optional<T>, std::iter_value_t<InputIt>>
   BinaryTree(InputIt first, InputIt last, Hasher hasher = {}, KeyEqual eq = {})
-      : detail::BinaryTreeBase<T, Hasher, KeyEqual>::BinaryTreeBase(std::move(hasher), std::move(eq)) {
+      : detail::BinaryTreeBase<T, Hasher, KeyEqual>(std::move(hasher), std::move(eq)) {
     fromArrayRepresentation(first, last);
   }
 

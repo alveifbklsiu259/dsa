@@ -16,11 +16,13 @@ private:
   using DummyT = std::monostate;
   hashmap::HashMap<Key, DummyT, Hasher, KeyEqual> m_map;
 
-public:
-  class Iterator {
+  template <bool IsConst> class Iterator {
 
   private:
-    using MapIterator = hashmap::HashMap<Key, DummyT, Hasher, KeyEqual>::iterator;
+    using MapIterator = std::conditional_t<
+        IsConst, typename hashmap::HashMap<Key, DummyT, Hasher, KeyEqual>::const_iterator,
+        typename hashmap::HashMap<Key, DummyT, Hasher, KeyEqual>::iterator>;
+
     MapIterator m_it;
 
   public:
@@ -50,7 +52,16 @@ public:
     bool operator!=(const Iterator& other) const { return m_it != other.m_it; }
   };
 
-  using ConstIterator = Iterator;
+public:
+  using value_type = Key;
+  using size_type = size_t;
+  using difference_type = ptrdiff_t;
+  using reference = value_type&;
+  using const_reference = const value_type&;
+  using pointer = value_type*;
+  using const_pointer = const value_type*;
+  using iterator = Iterator<false>;
+  using const_iterator = Iterator<true>;
 
   HashSet() = default;
 
@@ -78,26 +89,22 @@ public:
 
   [[nodiscard]] size_t size() const noexcept { return m_map.size(); }
 
-  std::pair<Iterator, bool> insert(const Key& key) {
-    auto [it, inserted] = emplace(key, DummyT{});
-    return {Iterator(it), inserted};
-  }
+  std::pair<iterator, bool> insert(const Key& key) { return emplace(key); }
+  std::pair<iterator, bool> insert(Key&& key) { return emplace(std::move(key)); }
 
-  std::pair<Iterator, bool> insert(Key&& key) {
-    auto [it, inserted] = emplace(std::move(key), DummyT{});
-    return {Iterator(it), inserted};
-  }
-
-  template <typename... Args> std::pair<Iterator, bool> emplace(Args&&... args) {
+  template <typename... Args> std::pair<iterator, bool> emplace(Args&&... args) {
     auto [it, inserted] = m_map.emplace(std::forward<Args>(args)..., DummyT{});
-    return {Iterator(it), inserted};
+    return {iterator{it}, inserted};
   }
 
-  Iterator begin() noexcept { return Iterator(m_map.begin()); }
+  constexpr void reserve(size_t n) { m_map.reserve(n); }
 
-  ConstIterator begin() const noexcept { return ConstIterator(m_map.begin()); }
+  iterator begin() noexcept { return iterator{m_map.begin()}; }
+  const_iterator begin() const noexcept { return const_iterator{m_map.begin()}; }
+  const_iterator cbegin() const noexcept { return const_iterator{m_map.cbegin()}; }
 
-  Iterator end() noexcept { return Iterator(m_map.end()); }
-  ConstIterator end() const noexcept { return ConstIterator(m_map.end()); }
+  iterator end() noexcept { return iterator{m_map.end()}; }
+  const_iterator end() const noexcept { return const_iterator{m_map.end()}; }
+  const_iterator cend() const noexcept { return const_iterator{m_map.cend()}; }
 };
 } // namespace hashset

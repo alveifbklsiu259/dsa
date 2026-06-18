@@ -8,7 +8,7 @@ namespace tree {
 namespace detail {
 
 template <typename T>
-concept Streamable = requires(std::ostream& os, T val) {
+concept Streamable = requires(std::ostream& os, const T& val) {
   { os << val } -> std::same_as<std::ostream&>;
 };
 
