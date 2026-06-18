@@ -135,7 +135,7 @@ int main() {
   // }
   clothingGraph.printGraph();
   // std::cout << std::boolalpha << clothingGraph.hasCycle() << '\n';
-  // for (auto& order : allOrders) std::cout << order << '\n';
+  for (auto& order : allOrders) std::cout << order << '\n';
   //------------------------------------------
   // hashset::HashSet<int> hs;
   // hs.reserve(12);

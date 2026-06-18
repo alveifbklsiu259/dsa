@@ -19,6 +19,9 @@ add_library(dsa_modules OBJECT)
 target_sources(dsa_modules PRIVATE # implementations
 )
 
+file(GLOB_RECURSE GRAPH_MODULES CONFIGURE_DEPENDS
+     "${CMAKE_CURRENT_SOURCE_DIR}/data_structure/graph/*.cppm")
+
 target_sources(
   dsa_modules
   PUBLIC FILE_SET
@@ -27,7 +30,7 @@ target_sources(
          CXX_MODULES
          FILES
          ./data_structure/tree/trie.cppm
-         ./data_structure/graph/graph.cppm
+         ${GRAPH_MODULES}
          ./algorithm/quick_select.cppm)
 
 target_link_libraries(dsa_modules PRIVATE Microsoft.GSL::GSL)
